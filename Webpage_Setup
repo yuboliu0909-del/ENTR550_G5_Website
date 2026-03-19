@@ -1,0 +1,20 @@
+Homepage
+├── Event Page (NEW!)
+│   ├── Event details
+│   ├── Schedule
+│   ├── Location map
+│   ├── FAQ
+│   └── Photo gallery
+│
+├── Postcard Platform (Existing)
+│   └── Already built!
+│
+├── Email Templates (NEW!)
+│   ├── Template browser
+│   ├── Template editor
+│   ├── Preview mode
+│   └── Export/send options
+│
+├── Gallery
+├── Updates/Blog
+└── Contact
