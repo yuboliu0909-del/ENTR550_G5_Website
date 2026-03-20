@@ -56,6 +56,12 @@
             <div id="editor-step1" class="editor-step">
                 <div class="editor">
                     <h2 id="editorTitle">Create Your Postcard</h2>
+                    <!-- Template Picker -->
+                    <div class="template-picker">
+                        <h4>🖼️ Choose a Template (optional)</h4>
+                        <div class="template-grid" id="templateGrid"></div>
+                    </div>
+
                     <div class="canvas-container">
                         <div class="canvas-section">
                             <div class="tools">
@@ -64,8 +70,8 @@
 
                                 <h4>✏️ Tools</h4>
                                 <div class="tool-buttons">
-                                    <button class="tool-btn" onclick="setTool('draw')">Draw</button>
-                                    <button class="tool-btn" onclick="setTool('erase')">Eraser</button>
+                                    <button class="tool-btn" onclick="setTool('draw', this)">Draw</button>
+                                    <button class="tool-btn" onclick="setTool('erase', this)">Eraser</button>
                                     <button class="tool-btn" onclick="clearCanvas()">Clear</button>
                                     <button class="tool-btn" onclick="undo()">Undo</button>
                                 </div>

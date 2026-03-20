@@ -21,6 +21,19 @@ let historyStep = -1;
 let currentCategory = '';
 let currentCategoryEmoji = '';
 let currentAccentColor = '#E8A598';
+let templateImage = null;
+
+const templates = [
+    { src: 'postcard_draft/greetings-large-letter.png',   label: 'Greetings AA' },
+    { src: 'postcard_draft/ann-arbor-travel-poster.png',  label: 'Travel Poster' },
+    { src: 'postcard_draft/engineered-in-ann-arbor.png',  label: 'Blueprint' },
+    { src: 'postcard_draft/greetings-burton-tower.png',   label: 'Burton Tower' },
+    { src: 'postcard_draft/snail-mail-co.png',            label: 'Snail Mail' },
+    { src: 'postcard_draft/greetings-fountain.png',       label: 'Fountain' },
+    { src: 'postcard_draft/little-moment-my-day.png',     label: 'My Moment' },
+    { src: 'postcard_draft/greetings-michigan-union.png', label: 'Michigan Union' },
+    { src: 'postcard_draft/cozy-cat-library.png',         label: 'Cozy Cat' },
+];
 
 const colors = [
     '#000000', '#E8A598', '#A8B5A0', '#2C3E50', '#D4AF37',
@@ -61,6 +74,7 @@ window.onload = function() {
     initFromParams();
     initCanvas();
     initColorPalettes();
+    initTemplatePicker();
     initEventListeners();
 };
 
@@ -116,6 +130,44 @@ function drawTemplate() {
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#00000020';
         ctx.fillText(currentCategoryEmoji, centerX, centerY);
+    }
+}
+
+function initTemplatePicker() {
+    const grid = document.getElementById('templateGrid');
+    templates.forEach(t => {
+        const thumb = document.createElement('img');
+        thumb.src = t.src;
+        thumb.className = 'template-thumb';
+        thumb.title = t.label;
+        thumb.alt = t.label;
+        thumb.onclick = () => selectTemplate(t.src, thumb);
+        grid.appendChild(thumb);
+    });
+}
+
+function selectTemplate(src, thumb) {
+    document.querySelectorAll('.template-thumb').forEach(t => t.classList.remove('active'));
+    thumb.classList.add('active');
+
+    const img = new Image();
+    img.onload = () => {
+        templateImage = img;
+        // Use native image resolution (capped at 1800px wide) for sharp export
+        const maxW = Math.min(img.naturalWidth, 1800);
+        canvas.width = maxW;
+        canvas.height = Math.round(maxW * (img.naturalHeight / img.naturalWidth));
+        applyTemplateToCanvas();
+        saveHistory();
+    };
+    img.src = src;
+}
+
+function applyTemplateToCanvas() {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (templateImage) {
+        ctx.drawImage(templateImage, 0, 0, canvas.width, canvas.height);
     }
 }
 
@@ -186,10 +238,10 @@ function selectAccentColor(color, swatch) {
     swatch.classList.add('active');
 }
 
-function setTool(tool) {
+function setTool(tool, btn) {
     currentTool = tool;
-    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
 }
 
 function startDrawing(e) {
@@ -245,7 +297,11 @@ function handleTouch(e) {
 function clearCanvas() {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawTemplate();
+    if (templateImage) {
+        ctx.drawImage(templateImage, 0, 0, canvas.width, canvas.height);
+    } else {
+        drawTemplate();
+    }
     saveHistory();
 }
 
@@ -264,7 +320,12 @@ function undo() {
 function saveHistory() {
     historyStep++;
     history = history.slice(0, historyStep);
-    history.push(canvas.toDataURL());
+    history.push(canvas.toDataURL('image/jpeg', 0.85));
+    // Keep max 20 undo steps to avoid memory issues with high-res canvas
+    if (history.length > 20) {
+        history.shift();
+        historyStep = history.length - 1;
+    }
 }
 
 function goToStep(step) {
@@ -276,12 +337,13 @@ function goToStep(step) {
         }
     }
 
-    if (step === 3) {
-        updatePreview();
-    }
-
     document.querySelectorAll('.editor-step').forEach(s => s.style.display = 'none');
     document.getElementById('editor-step' + step).style.display = 'block';
+
+    if (step === 3) {
+        // Call after step is visible so clientWidth is correct
+        requestAnimationFrame(updatePreview);
+    }
 
     for (let i = 1; i <= 3; i++) {
         const circle = document.getElementById('step' + i);
@@ -297,8 +359,11 @@ function goToStep(step) {
 
 function updatePreview() {
     const previewCanvas = document.getElementById('previewCanvas');
+    // Match drawing canvas resolution exactly — CSS width:100% handles display scaling
+    previewCanvas.width = canvas.width;
+    previewCanvas.height = canvas.height;
     const previewCtx = previewCanvas.getContext('2d');
-    previewCtx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+    previewCtx.drawImage(canvas, 0, 0);
 
     const message = document.getElementById('messageText').value;
     const font = document.getElementById('fontSelect').value;
@@ -322,13 +387,13 @@ function updatePreview() {
 }
 
 function generatePostcard() {
-    const id = 'pc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const id = 'pc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
 
     const postcardData = {
         id: id,
         category: currentCategory,
         emoji: currentCategoryEmoji,
-        canvasData: canvas.toDataURL(),
+        canvasData: canvas.toDataURL('image/jpeg', 0.85),
         message: document.getElementById('messageText').value,
         font: document.getElementById('fontSelect').value,
         accentColor: currentAccentColor,
@@ -338,7 +403,15 @@ function generatePostcard() {
         createdAt: new Date().toISOString()
     };
 
-    localStorage.setItem('postcard_' + id, JSON.stringify(postcardData));
+    try {
+        localStorage.setItem('postcard_' + id, JSON.stringify(postcardData));
+    } catch (e) {
+        // localStorage full — purge old postcard entries and retry
+        Object.keys(localStorage)
+            .filter(k => k.startsWith('postcard_'))
+            .forEach(k => localStorage.removeItem(k));
+        localStorage.setItem('postcard_' + id, JSON.stringify(postcardData));
+    }
 
     generatePostcardImage(postcardData, id);
 
@@ -352,127 +425,139 @@ function generatePostcardImage(postcardData, id) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
 
-    tempCanvas.width = 1200;
-    tempCanvas.height = 800;
+    // Canvas is already at native template resolution — no upscaling needed
+    const scale = 1;
+    const frontW = canvas.width * scale;
+    const frontH = canvas.height * scale;
+    const pad = 10 * scale;
+    const gap = 20 * scale;
+
+    tempCanvas.width = frontW * 2 + gap + pad * 2;
+    tempCanvas.height = frontH + pad * 2;
 
     tempCtx.fillStyle = '#FFFFFF';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
+    // Front panel
     tempCtx.fillStyle = '#FFF8F0';
-    tempCtx.fillRect(10, 10, 580, 780);
+    tempCtx.fillRect(pad, pad, frontW, frontH);
 
     const img = new Image();
     img.onload = () => {
-        tempCtx.drawImage(img, 20, 20, 560, 747);
+        tempCtx.drawImage(img, pad, pad, frontW, frontH);
 
         tempCtx.strokeStyle = postcardData.accentColor;
-        tempCtx.lineWidth = 3;
-        tempCtx.strokeRect(10, 10, 580, 780);
+        tempCtx.lineWidth = 3 * scale;
+        tempCtx.strokeRect(pad, pad, frontW, frontH);
 
+        // Back panel
+        const backX = pad + frontW + gap;
         tempCtx.fillStyle = '#FFF8F0';
-        tempCtx.fillRect(610, 10, 580, 780);
+        tempCtx.fillRect(backX, pad, frontW, frontH);
 
         tempCtx.strokeStyle = postcardData.accentColor;
-        tempCtx.lineWidth = 3;
-        tempCtx.strokeRect(610, 10, 580, 780);
+        tempCtx.lineWidth = 3 * scale;
+        tempCtx.strokeRect(backX, pad, frontW, frontH);
+
+        // Back panel text — all coords relative to backX, scaled up
+        const tx = backX + 40 * scale;
+        let ty = 60 * scale;
 
         tempCtx.fillStyle = postcardData.accentColor;
-        tempCtx.font = `24px ${postcardData.font}`;
+        tempCtx.font = `${24 * scale}px ${postcardData.font}`;
         tempCtx.textAlign = 'left';
 
-        const maxWidth = 520;
-        const lineHeight = 36;
-        const x = 650;
-        let y = 60;
+        const maxWidth = (frontW - 80 * scale);
+        const lineHeight = 36 * scale;
 
         const words = postcardData.message.split(' ');
         let line = '';
-
         for (let n = 0; n < words.length; n++) {
             const testLine = line + words[n] + ' ';
-            const testWidth = tempCtx.measureText(testLine).width;
-
-            if (testWidth > maxWidth && n > 0) {
-                tempCtx.fillText(line, x, y);
+            if (tempCtx.measureText(testLine).width > maxWidth && n > 0) {
+                tempCtx.fillText(line, tx, ty);
                 line = words[n] + ' ';
-                y += lineHeight;
+                ty += lineHeight;
             } else {
                 line = testLine;
             }
         }
-        tempCtx.fillText(line, x, y);
+        tempCtx.fillText(line, tx, ty);
 
-        y = 680;
-        tempCtx.font = '20px Georgia';
+        ty = frontH - 120 * scale;
+        tempCtx.font = `${20 * scale}px Georgia`;
         tempCtx.fillStyle = '#2C3E50';
-
-        tempCtx.fillText('From:', x, y);
         const senderText = postcardData.senderMode === 'anonymous'
             ? 'A Friend ✨'
             : postcardData.senderName || 'Anonymous';
-        tempCtx.fillText(senderText, x + 70, y);
+        tempCtx.fillText('From: ' + senderText, tx, ty);
 
         if (postcardData.location) {
-            y += 30;
-            tempCtx.font = '16px Georgia';
+            ty += 30 * scale;
+            tempCtx.font = `${16 * scale}px Georgia`;
             tempCtx.fillStyle = '#2C3E5080';
-            tempCtx.fillText('Sent from: ' + postcardData.location, x, y);
+            tempCtx.fillText('Sent from: ' + postcardData.location, tx, ty);
         }
 
+        // Stamp
+        const stampSize = 80 * scale;
+        const stampX = backX + frontW - stampSize - 20 * scale;
+        const stampY = frontH - stampSize - 20 * scale + pad;
         tempCtx.strokeStyle = postcardData.accentColor;
-        tempCtx.lineWidth = 4;
-        tempCtx.strokeRect(1090, 650, 80, 80);
-        tempCtx.font = '40px Arial';
+        tempCtx.lineWidth = 4 * scale;
+        tempCtx.strokeRect(stampX, stampY, stampSize, stampSize);
+        tempCtx.font = `${40 * scale}px Arial`;
         tempCtx.textAlign = 'center';
-        tempCtx.fillText('💌', 1130, 705);
+        tempCtx.fillStyle = '#000';
+        tempCtx.fillText('💌', stampX + stampSize / 2, stampY + stampSize * 0.7);
 
-        tempCtx.font = '12px Georgia';
+        // Date
+        tempCtx.font = `${12 * scale}px Georgia`;
         tempCtx.fillStyle = '#2C3E5060';
         tempCtx.textAlign = 'right';
         const date = new Date(postcardData.createdAt).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
+            month: 'long', day: 'numeric', year: 'numeric'
         });
-        tempCtx.fillText(date, 1160, 750);
+        tempCtx.fillText(date, backX + frontW - 10 * scale, frontH + pad - 10 * scale);
 
-        const jpgDataUrl = tempCanvas.toDataURL('image/jpeg', 0.9);
-        localStorage.setItem('postcard_jpg_' + id, jpgDataUrl);
+        const jpgDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+        try {
+            localStorage.setItem('postcard_jpg_' + id, jpgDataUrl);
+        } catch (e) {
+            // localStorage full — download will generate on the fly
+        }
 
-        updateShareModal(id);
+        updateShareModal(id, jpgDataUrl);
     };
     img.src = postcardData.canvasData;
 }
 
-function updateShareModal(id) {
+function updateShareModal(id, jpgDataUrl) {
     const existingBtn = document.getElementById('downloadJpgBtn');
-    if (!existingBtn) {
-        const downloadBtn = document.createElement('button');
-        downloadBtn.id = 'downloadJpgBtn';
-        downloadBtn.className = 'cta-button';
-        downloadBtn.style.width = '100%';
-        downloadBtn.style.marginBottom = '10px';
-        downloadBtn.innerHTML = '📥 Download as JPG';
-        downloadBtn.onclick = () => downloadPostcardJpg(id);
+    const btn = existingBtn || document.createElement('button');
+    btn.id = 'downloadJpgBtn';
+    btn.className = 'cta-button';
+    btn.style.width = '100%';
+    btn.style.marginBottom = '10px';
+    btn.innerHTML = '📥 Download as JPG';
+    btn.onclick = () => downloadPostcardJpg(id, jpgDataUrl);
 
+    if (!existingBtn) {
         const shareBtn = document.querySelector('#shareModal .cta-button');
-        shareBtn.parentNode.insertBefore(downloadBtn, shareBtn);
+        shareBtn.parentNode.insertBefore(btn, shareBtn);
     }
 }
 
-function downloadPostcardJpg(id) {
-    const jpgData = localStorage.getItem('postcard_jpg_' + id);
+function downloadPostcardJpg(id, jpgDataUrl) {
+    const jpgData = jpgDataUrl || localStorage.getItem('postcard_jpg_' + id);
     if (!jpgData) {
         alert('Image not ready yet. Please wait a moment and try again.');
         return;
     }
-
     const link = document.createElement('a');
     link.download = `postcard_${id}.jpg`;
     link.href = jpgData;
     link.click();
-
-    alert('Your postcard has been downloaded! 🎉');
 }
 
 function closeModal() {

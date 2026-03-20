@@ -112,7 +112,8 @@ nav button:hover {
 .hero p {
     font-size: 1.5rem;
     margin-bottom: 40px;
-    opacity: 0.8;
+    color: var(--navy);
+    text-shadow: 0 1px 6px rgba(255,255,255,0.85);
 }
 
 .cta-button {
@@ -156,6 +157,53 @@ nav button:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
 }
+
+.feature-card {
+    cursor: default;
+}
+
+.feature-card:hover {
+    transform: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+/* Background scattered postcards on home page */
+.hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.hero h1,
+.hero p,
+.hero .cta-button {
+    position: relative;
+    z-index: 1;
+}
+
+.bg-postcards {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bg-pc {
+    position: absolute;
+    width: 185px;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.18);
+    opacity: 0.4;
+}
+
+/* Left column */
+.bp1 { top:  2%;   left:  12px; transform: rotate(-10deg); }
+.bp3 { top:  37%;  left:  18px; transform: rotate(7deg);   }
+.bp5 { top:  70%;  left:  12px; transform: rotate(12deg);  }
+
+/* Right column */
+.bp2 { top:   5%;  right: 12px; transform: rotate(9deg);   }
+.bp4 { top:  38%;  right: 18px; transform: rotate(-8deg);  }
+.bp6 { top:  72%;  right: 12px; transform: rotate(-6deg);  }
 
 .card-emoji {
     font-size: 4rem;
@@ -348,9 +396,16 @@ select {
 
 .postcard-front {
     background: linear-gradient(135deg, rgba(168, 181, 160, 0.2), rgba(232, 165, 152, 0.2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 13px;
+    min-height: auto;
+}
+
+#previewCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 .postcard-back {
@@ -479,6 +534,49 @@ select {
     .action-buttons button {
         width: 100%;
     }
+
+    /* Progress bar on mobile */
+    .progress-bar {
+        gap: 8px;
+    }
+
+    .progress-step {
+        gap: 6px;
+    }
+
+    .progress-line {
+        width: 24px;
+    }
+
+    /* Preview page on mobile */
+    .postcard-preview {
+        padding: 15px;
+    }
+
+    .postcard-sides {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .postcard-sides > div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .postcard-sides h3 {
+        text-align: center;
+        width: 100%;
+    }
+
+    .postcard-side {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    #previewCanvas {
+        max-width: 320px;
+    }
 }
 
 .progress-bar {
@@ -498,6 +596,9 @@ select {
 .progress-circle {
     width: 40px;
     height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    flex-shrink: 0;
     border-radius: 50%;
     background: #ddd;
     display: flex;
@@ -522,4 +623,40 @@ footer {
     text-align: center;
     padding: 40px 20px;
     opacity: 0.6;
+}
+
+/* Template Picker */
+.template-picker {
+    margin-bottom: 20px;
+}
+
+.template-picker h4 {
+    margin-bottom: 10px;
+}
+
+.template-grid {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 6px 2px;
+}
+
+.template-thumb {
+    width: 110px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 3px solid transparent;
+    flex-shrink: 0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.template-thumb:hover {
+    border-color: var(--rose);
+}
+
+.template-thumb.active {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px var(--navy);
 }
