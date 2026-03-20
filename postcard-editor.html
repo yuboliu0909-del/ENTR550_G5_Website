@@ -1,0 +1,226 @@
+<!--
+  postcard-editor.html — Postcard Creation Page
+  Reached from Postcard.html after the user picks a category.
+  URL params: ?category=<slug>&emoji=<emoji>[&loc=<qr_code_id>]
+
+  Contains a 3-step wizard:
+    Step 1 — Customize: draw on canvas, write message, choose font & accent color
+    Step 2 — Sender Info: name/nickname/anonymous, campus location
+    Step 3 — Preview: front + back preview before generating the share link
+
+  On completion, saves postcard data to localStorage and shows a share modal
+  with a link pointing to postcard-view.html?view=<id>.
+  All interactivity is handled by postcard-editor.js.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Postcard - Virtual Postcard Platform</title>
+    <link rel="stylesheet" href="postcard.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                📮 PostCard
+            </div>
+            <nav>
+                <button onclick="window.location.href='Postcard.html'">Home</button>
+                <button onclick="window.location.href='Postcard.html#about'">About</button>
+            </nav>
+        </header>
+
+        <!-- Editor (always active on this page) -->
+        <div id="editor" class="section active">
+            <div class="progress-bar">
+                <div class="progress-step">
+                    <div class="progress-circle active" id="step1">1</div>
+                    <span>Customize</span>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step">
+                    <div class="progress-circle" id="step2">2</div>
+                    <span>Sender Info</span>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step">
+                    <div class="progress-circle" id="step3">3</div>
+                    <span>Preview</span>
+                </div>
+            </div>
+
+            <!-- Step 1: Customize -->
+            <div id="editor-step1" class="editor-step">
+                <div class="editor">
+                    <h2 id="editorTitle">Create Your Postcard</h2>
+                    <div class="canvas-container">
+                        <div class="canvas-section">
+                            <div class="tools">
+                                <h4>🎨 Color Palette</h4>
+                                <div class="color-palette" id="colorPalette"></div>
+
+                                <h4>✏️ Tools</h4>
+                                <div class="tool-buttons">
+                                    <button class="tool-btn" onclick="setTool('draw')">Draw</button>
+                                    <button class="tool-btn" onclick="setTool('erase')">Eraser</button>
+                                    <button class="tool-btn" onclick="clearCanvas()">Clear</button>
+                                    <button class="tool-btn" onclick="undo()">Undo</button>
+                                </div>
+
+                                <h4>Brush Size</h4>
+                                <input type="range" min="1" max="20" value="3" id="brushSize" style="width: 100%;">
+                            </div>
+                            <canvas id="drawingCanvas" width="600" height="800"></canvas>
+                        </div>
+
+                        <div class="canvas-section">
+                            <label>Your Message</label>
+                            <textarea id="messageText" placeholder="Write your heartfelt message here... Make it meaningful!" maxlength="500"></textarea>
+                            <div style="text-align: right; opacity: 0.6; margin-top: -15px; margin-bottom: 15px;">
+                                <span id="charCount">0</span>/500
+                            </div>
+
+                            <label>Choose Font</label>
+                            <select id="fontSelect">
+                                <option value="Georgia, serif">Classic</option>
+                                <option value="'Palatino', serif">Elegant</option>
+                                <option value="'Courier New', monospace">Typewriter</option>
+                                <option value="'Brush Script MT', cursive">Handwriting</option>
+                                <option value="Arial, sans-serif">Modern</option>
+                            </select>
+
+                            <label>Accent Color</label>
+                            <div class="color-palette" id="accentColors"></div>
+
+                            <button class="cta-button" style="width: 100%; margin-top: 20px;" onclick="goToStep(2)">
+                                Continue to Sender Info →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Sender Info -->
+            <div id="editor-step2" class="editor-step" style="display: none;">
+                <div class="editor">
+                    <h2>Sender Information</h2>
+                    <p style="text-align: center; opacity: 0.7; margin-bottom: 30px;">
+                        How should the recipient see you?
+                    </p>
+
+                    <label>Display As</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="senderMode" value="named" checked>
+                            <div>
+                                <strong>Show My Name</strong>
+                                <div style="font-size: 0.9rem; opacity: 0.7;">From: [Your Name]</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="senderMode" value="nickname">
+                            <div>
+                                <strong>Use a Nickname</strong>
+                                <div style="font-size: 0.9rem; opacity: 0.7;">From: [Nickname]</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="senderMode" value="anonymous">
+                            <div>
+                                <strong>Stay Anonymous</strong>
+                                <div style="font-size: 0.9rem; opacity: 0.7;">From: A Friend</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <label>Your Name / Nickname</label>
+                    <input type="text" id="senderName" placeholder="Enter your name or nickname" maxlength="50">
+
+                    <label>Sent From</label>
+                    <select id="location">
+                        <option value="">Select location...</option>
+                        <option value="Pierpont Commons, North Campus">Pierpont Commons, North Campus</option>
+                        <option value="Duderstadt Center, North Campus">Duderstadt Center, North Campus</option>
+                        <option value="Shapiro Library (UGLi), Central Campus">Shapiro Library (UGLi), Central Campus</option>
+                        <option value="Michigan Union, Central Campus">Michigan Union, Central Campus</option>
+                        <option value="North Campus">North Campus</option>
+                        <option value="Central Campus">Central Campus</option>
+                        <option value="Ann Arbor, MI">Ann Arbor, MI</option>
+                    </select>
+
+                    <div class="action-buttons">
+                        <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
+                        <button class="cta-button" style="flex: 2;" onclick="goToStep(3)">Preview →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Preview -->
+            <div id="editor-step3" class="editor-step" style="display: none;">
+                <div class="editor">
+                    <h2>Preview Your Postcard</h2>
+                    <p style="text-align: center; opacity: 0.7; margin-bottom: 30px;">
+                        Check everything looks good before sending!
+                    </p>
+
+                    <div class="postcard-preview">
+                        <div class="postcard-sides">
+                            <div>
+                                <h3 style="text-align: center; margin-bottom: 15px;">Front</h3>
+                                <div class="postcard-side postcard-front">
+                                    <canvas id="previewCanvas" width="300" height="400" style="max-width: 100%;"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="text-align: center; margin-bottom: 15px;">Back</h3>
+                                <div class="postcard-side postcard-back">
+                                    <div id="previewMessage" style="font-size: 1.1rem; line-height: 1.6;"></div>
+                                    <div style="margin-top: 20px; padding-top: 20px; border-top: 2px dashed rgba(0,0,0,0.2);">
+                                        <div id="previewSender" style="margin-bottom: 10px;"><strong>From:</strong> <span></span></div>
+                                        <div id="previewLocation" style="opacity: 0.7; font-size: 0.9rem;"><strong>Sent from:</strong> <span></span></div>
+                                    </div>
+                                    <div class="stamp">💌</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn-secondary" onclick="goToStep(2)">← Edit</button>
+                        <button class="cta-button" style="flex: 2;" onclick="generatePostcard()">Create & Share Link 🚀</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Made with ❤️ for meaningful connections</p>
+            <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
+        </footer>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <h2>🎉 Postcard Created!</h2>
+            <p style="margin: 20px 0;">Share this link with your recipient:</p>
+            <div class="share-url" id="shareUrl"></div>
+            <button class="cta-button" onclick="copyLink()" style="width: 100%; margin-bottom: 10px;">
+                📋 Copy Link
+            </button>
+            <button class="cta-button" onclick="shareViaEmail()" style="width: 100%; margin-bottom: 10px; background: var(--sage);">
+                ✉️ Share via Email
+            </button>
+            <button class="btn-secondary" onclick="closeModal(); window.location.href='Postcard.html';" style="width: 100%;">
+                Create Another Postcard
+            </button>
+        </div>
+    </div>
+
+    <script src="postcard-editor.js"></script>
+</body>
+</html>
