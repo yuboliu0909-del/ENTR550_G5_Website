@@ -212,17 +212,10 @@ function initEventListeners() {
         document.getElementById('charCount').textContent = e.target.value.length;
     });
 
-    document.querySelectorAll('input[name="senderMode"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            const nameInput = document.getElementById('senderName');
-            if (e.target.value === 'anonymous') {
-                nameInput.disabled = true;
-                nameInput.value = '';
-            } else {
-                nameInput.disabled = false;
-            }
-        });
+    document.getElementById('fontSelect').addEventListener('change', (e) => {
+        document.getElementById('messageText').style.fontFamily = e.target.value;
     });
+
 }
 
 function selectColor(color, swatch) {
@@ -372,15 +365,9 @@ function updatePreview() {
     previewMessage.style.fontFamily = font;
     previewMessage.style.color = currentAccentColor;
 
-    const senderMode = document.querySelector('input[name="senderMode"]:checked').value;
     const senderName = document.getElementById('senderName').value;
     const senderSpan = document.querySelector('#previewSender span');
-
-    if (senderMode === 'anonymous') {
-        senderSpan.textContent = 'A Friend ✨';
-    } else {
-        senderSpan.textContent = senderName || 'Anonymous';
-    }
+    senderSpan.textContent = senderName || 'Anonymous';
 
     const location = document.getElementById('location').value;
     document.querySelector('#previewLocation span').textContent = location || 'Ann Arbor, MI';
@@ -389,34 +376,50 @@ function updatePreview() {
 function generatePostcard() {
     const id = 'pc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
 
+    const canvasData = canvas.toDataURL('image/jpeg', 0.85);
+
     const postcardData = {
         id: id,
         category: currentCategory,
         emoji: currentCategoryEmoji,
-        canvasData: canvas.toDataURL('image/jpeg', 0.85),
+        canvasData: canvasData,
         message: document.getElementById('messageText').value,
         font: document.getElementById('fontSelect').value,
         accentColor: currentAccentColor,
-        senderMode: document.querySelector('input[name="senderMode"]:checked').value,
         senderName: document.getElementById('senderName').value,
         location: document.getElementById('location').value,
         createdAt: new Date().toISOString()
     };
 
+    // Store canvas separately in localStorage for same-device viewing
     try {
-        localStorage.setItem('postcard_' + id, JSON.stringify(postcardData));
+        localStorage.setItem('canvas_' + id, canvasData);
     } catch (e) {
-        // localStorage full — purge old postcard entries and retry
-        Object.keys(localStorage)
-            .filter(k => k.startsWith('postcard_'))
-            .forEach(k => localStorage.removeItem(k));
-        localStorage.setItem('postcard_' + id, JSON.stringify(postcardData));
+        try {
+            Object.keys(localStorage).filter(k => k.startsWith('canvas_')).forEach(k => localStorage.removeItem(k));
+            localStorage.setItem('canvas_' + id, canvasData);
+        } catch (e2) {
+            // localStorage full even after cleanup — skip canvas caching, link will still work
+        }
     }
 
     generatePostcardImage(postcardData, id);
 
+    // Encode only text metadata in URL (no canvasData — keeps URL short)
+    const urlMeta = {
+        id: id,
+        category: currentCategory,
+        emoji: currentCategoryEmoji,
+        message: postcardData.message,
+        font: postcardData.font,
+        accentColor: postcardData.accentColor,
+        senderName: postcardData.senderName,
+        location: postcardData.location,
+        createdAt: postcardData.createdAt
+    };
+    const encoded = btoa(encodeURIComponent(JSON.stringify(urlMeta)).replace(/%([0-9A-F]{2})/gi, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
     const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
-    const url = baseUrl + 'postcard-view.html?view=' + id;
+    const url = baseUrl + 'postcard-view.html?data=' + encodeURIComponent(encoded);
     document.getElementById('shareUrl').textContent = url;
     document.getElementById('shareModal').classList.add('active');
 }
@@ -487,9 +490,7 @@ function generatePostcardImage(postcardData, id) {
         ty = frontH - 120 * scale;
         tempCtx.font = `${20 * scale}px Georgia`;
         tempCtx.fillStyle = '#2C3E50';
-        const senderText = postcardData.senderMode === 'anonymous'
-            ? 'A Friend ✨'
-            : postcardData.senderName || 'Anonymous';
+        const senderText = postcardData.senderName || 'Anonymous';
         tempCtx.fillText('From: ' + senderText, tx, ty);
 
         if (postcardData.location) {
@@ -543,8 +544,8 @@ function updateShareModal(id, jpgDataUrl) {
     btn.onclick = () => downloadPostcardJpg(id, jpgDataUrl);
 
     if (!existingBtn) {
-        const shareBtn = document.querySelector('#shareModal .cta-button');
-        shareBtn.parentNode.insertBefore(btn, shareBtn);
+        const gmailBtn = document.querySelector('#shareModal .cta-button');
+        gmailBtn.after(btn);
     }
 }
 
@@ -571,13 +572,28 @@ function copyLink() {
     });
 }
 
-function shareViaEmail() {
+function shareViaGmail() {
+    const recipient = document.getElementById('recipientEmail').value.trim();
+    if (!recipient) {
+        document.getElementById('recipientEmail').focus();
+        document.getElementById('recipientEmail').style.borderColor = '#e74c3c';
+        return;
+    }
+    document.getElementById('recipientEmail').style.borderColor = 'var(--sage)';
+
     const url = document.getElementById('shareUrl').textContent;
-    const subject = encodeURIComponent('You received a postcard! 💌');
+    const sender = document.getElementById('senderName').value.trim() || 'Someone Special';
+    const subject = encodeURIComponent('✉️ You\'ve got a postcard from ' + sender + '!');
     const body = encodeURIComponent(
-        `Someone sent you a virtual postcard!\n\n` +
-        `View it here: ${url}\n\n` +
-        `Created with love from campus.`
+        `💌  A postcard is waiting for you!\n` +
+        `${'─'.repeat(40)}\n\n` +
+        `  From:   ${sender}\n` +
+        `  To:     You\n\n` +
+        `${'─'.repeat(40)}\n\n` +
+        `  Tap the link below to open your postcard:\n\n` +
+        `  → ${url}\n\n` +
+        `${'─'.repeat(40)}\n` +
+        `  Sent with PostCard · University of Michigan`
     );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(recipient)}&su=${subject}&body=${body}`, '_blank');
 }

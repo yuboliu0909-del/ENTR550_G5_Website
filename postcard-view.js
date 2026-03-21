@@ -11,40 +11,40 @@
 
 window.onload = function() {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('view');
-    if (id) {
-        loadPostcard(id);
+    const encoded = params.get('data');
+    if (encoded) {
+        try {
+            const json = decodeURIComponent(atob(encoded).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''));
+            const postcard = JSON.parse(json);
+            renderPostcard(postcard);
+        } catch (e) {
+            document.getElementById('view').innerHTML =
+                '<p style="text-align:center; font-size:1.5rem; padding:60px 20px;">Could not load postcard. <a href="Postcard.html">Create one!</a></p>';
+        }
     } else {
         document.getElementById('view').innerHTML =
             '<p style="text-align:center; font-size:1.5rem; padding:60px 20px;">No postcard found. <a href="Postcard.html">Create one!</a></p>';
     }
 };
 
-function loadPostcard(id) {
-    const data = localStorage.getItem('postcard_' + id);
+function loadPostcard(postcard) {
+    renderPostcard(postcard);
+}
 
-    if (!data) {
-        alert('Postcard not found!');
-        window.location.href = 'Postcard.html';
-        return;
+function renderPostcard(postcard) {
+    // Try localStorage first (same device), fall back to emoji placeholder
+    const canvasData = postcard.canvasData || (postcard.id && localStorage.getItem('canvas_' + postcard.id));
+    const frontEl = document.getElementById('viewFront');
+
+    if (canvasData) {
+        const img = document.createElement('img');
+        img.src = canvasData;
+        img.style.cssText = 'width:100%;height:100%;display:block;border-radius:13px;object-fit:cover;';
+        frontEl.innerHTML = '';
+        frontEl.appendChild(img);
+    } else {
+        frontEl.innerHTML = `<div style="width:100%;height:100%;min-height:400px;display:flex;align-items:center;justify-content:center;font-size:5rem;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:13px;">${postcard.emoji || '💌'}</div>`;
     }
-
-    const postcard = JSON.parse(data);
-
-    const img = new Image();
-    img.onload = () => {
-        const viewCanvas = document.createElement('canvas');
-        viewCanvas.width = 300;
-        viewCanvas.height = 400;
-        viewCanvas.style.maxWidth = '100%';
-        viewCanvas.style.borderRadius = '10px';
-        const viewCtx = viewCanvas.getContext('2d');
-        viewCtx.drawImage(img, 0, 0, viewCanvas.width, viewCanvas.height);
-
-        document.getElementById('viewFront').innerHTML = '';
-        document.getElementById('viewFront').appendChild(viewCanvas);
-    };
-    img.src = postcard.canvasData;
 
     const viewMessage = document.getElementById('viewMessage');
     viewMessage.textContent = postcard.message;
@@ -63,20 +63,15 @@ function loadPostcard(id) {
 
 function downloadViewedPostcard() {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('view');
-    if (!id) return;
+    const encoded = params.get('data');
+    if (!encoded) return;
 
-    const jpgData = localStorage.getItem('postcard_jpg_' + id);
-    if (jpgData) {
-        const link = document.createElement('a');
-        link.download = `postcard_${id}.jpg`;
-        link.href = jpgData;
-        link.click();
-        alert('Postcard downloaded! 🎉');
-    } else {
-        const postcardData = JSON.parse(localStorage.getItem('postcard_' + id));
-        if (!postcardData) return;
-        generatePostcardImageForDownload(postcardData, id);
+    try {
+        const json = decodeURIComponent(atob(encoded).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''));
+        const postcardData = JSON.parse(json);
+        generatePostcardImageForDownload(postcardData, postcardData.id || 'postcard');
+    } catch (e) {
+        alert('Could not generate download.');
     }
 }
 

@@ -58,7 +58,7 @@
                     <h2 id="editorTitle">Create Your Postcard</h2>
                     <!-- Template Picker -->
                     <div class="template-picker">
-                        <h4>🖼️ Choose a Template (optional)</h4>
+                        <h4>🖼️ Choose a Template</h4>
                         <div class="template-grid" id="templateGrid"></div>
                     </div>
 
@@ -116,31 +116,6 @@
                     <p style="text-align: center; opacity: 0.7; margin-bottom: 30px;">
                         How should the recipient see you?
                     </p>
-
-                    <label>Display As</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="senderMode" value="named" checked>
-                            <div>
-                                <strong>Show My Name</strong>
-                                <div style="font-size: 0.9rem; opacity: 0.7;">From: [Your Name]</div>
-                            </div>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="senderMode" value="nickname">
-                            <div>
-                                <strong>Use a Nickname</strong>
-                                <div style="font-size: 0.9rem; opacity: 0.7;">From: [Nickname]</div>
-                            </div>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="senderMode" value="anonymous">
-                            <div>
-                                <strong>Stay Anonymous</strong>
-                                <div style="font-size: 0.9rem; opacity: 0.7;">From: A Friend</div>
-                            </div>
-                        </label>
-                    </div>
 
                     <label>Your Name / Nickname</label>
                     <input type="text" id="senderName" placeholder="Enter your name or nickname" maxlength="50">
@@ -213,13 +188,15 @@
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal()">×</button>
             <h2>🎉 Postcard Created!</h2>
-            <p style="margin: 20px 0;">Share this link with your recipient:</p>
-            <div class="share-url" id="shareUrl"></div>
+            <div id="shareUrl" style="display:none;"></div>
+            <input type="email" id="recipientEmail" placeholder="Recipient's email address"
+                style="width:100%; padding:12px 15px; border:2px solid var(--sage); border-radius:10px;
+                       font-size:1rem; margin-bottom:15px; box-sizing:border-box; font-family:inherit;">
+            <button class="cta-button" onclick="shareViaGmail()" style="width: 100%; margin-bottom: 10px; background: #4285F4;">
+                ✉️ Send via Gmail
+            </button>
             <button class="cta-button" onclick="copyLink()" style="width: 100%; margin-bottom: 10px;">
                 📋 Copy Link
-            </button>
-            <button class="cta-button" onclick="shareViaEmail()" style="width: 100%; margin-bottom: 10px; background: var(--sage);">
-                ✉️ Share via Email
             </button>
             <button class="btn-secondary" onclick="closeModal(); window.location.href='Postcard.html';" style="width: 100%;">
                 Create Another Postcard
