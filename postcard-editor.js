@@ -913,16 +913,20 @@ function shareViaGmail() {
     const isAndroid = /Android/i.test(navigator.userAgent);
 
     if (isIOS) {
-        // Try Gmail app first; if not installed, fall back to Gmail web after 1.5s
+        // When Gmail app opens, the browser page becomes hidden (visibilitychange fires).
+        // Only fall back to web if the page never went hidden after 2s (= app not installed).
         const gmailAppUrl = `googlegmail://co?to=${encodeURIComponent(recipient)}&subject=${subject}&body=${body}`;
-        const t = Date.now();
+        let appOpened = false;
+
+        const onHide = () => { if (document.hidden) appOpened = true; };
+        document.addEventListener('visibilitychange', onHide);
+
         window.location.href = gmailAppUrl;
+
         setTimeout(() => {
-            if (Date.now() - t < 2500) {
-                // App didn't open — still on page, redirect to web
-                window.open(webUrl, '_blank');
-            }
-        }, 1500);
+            document.removeEventListener('visibilitychange', onHide);
+            if (!appOpened) window.open(webUrl, '_blank');
+        }, 2000);
     } else if (isAndroid) {
         window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`;
     } else {
