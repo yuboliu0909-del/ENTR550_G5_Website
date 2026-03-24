@@ -12,16 +12,13 @@
 
 // Global state
 let canvas, ctx;
-let isDrawing = false;
-let currentColor = '#000000';
-let currentTool = 'draw';
-let brushSize = 3;
 let history = [];
 let historyStep = -1;
 let currentCategory = '';
 let currentCategoryEmoji = '';
 let currentAccentColor = '#E8A598';
 let templateImage = null;
+let selectedDecoItem = null;
 
 const templates = [
     { src: 'postcard_draft/greetings-large-letter.png',   label: 'Greetings AA' },
@@ -35,12 +32,6 @@ const templates = [
     { src: 'postcard_draft/cozy-cat-library.png',         label: 'Cozy Cat' },
 ];
 
-const colors = [
-    '#000000', '#E8A598', '#A8B5A0', '#2C3E50', '#D4AF37',
-    '#87CEEB', '#E6E6FA', '#FF6B6B', '#FFA500', '#FFD700',
-    '#90EE90', '#4169E1', '#9370DB', '#FF69B4', '#8B4513'
-];
-
 const accentColors = [
     { hex: '#A8B5A0', name: 'Sage' },
     { hex: '#E8A598', name: 'Rose' },
@@ -49,6 +40,40 @@ const accentColors = [
     { hex: '#87CEEB', name: 'Sky' },
     { hex: '#E6E6FA', name: 'Lavender' }
 ];
+
+const stamps = [
+    { text: 'Miss You 💌', color: '#E8A598' },
+    { text: 'Wish You Were Here ✈️', color: '#87CEEB' },
+    { text: 'Thinking of You 💭', color: '#9370DB' },
+    { text: 'Sending Love ❤️', color: '#FF6B6B' },
+    { text: 'From Ann Arbor 🏛️', color: '#D4AF37' },
+    { text: 'Go Blue! 〽️', color: '#00274C' },
+    { text: 'With Love 💝', color: '#FF69B4' },
+    { text: "You've Got This! 💪", color: '#A8B5A0' },
+    { text: 'Congratulations! 🎉', color: '#FFA500' },
+    { text: 'Thank You! 🙏', color: '#8B6914' },
+    { text: 'Always in My Heart ♥', color: '#C44569' },
+    { text: 'Wishing You Well 🌟', color: '#8B4513' },
+];
+
+const stickers = [
+    '🌸', '🌺', '🌻', '🌹', '🌷', '🦋', '🐝',
+    '⭐', '💫', '✨', '🌙', '☀️', '🌈',
+    '❤️', '💕', '💛', '💚', '💙', '💜',
+    '🍂', '🍁', '🍀', '🌿', '🍃',
+    '☕', '📮', '✉️', '🎀', '🎊', '🎈',
+    '〽️', '🏛️', '🌊', '⛵', '🏠',
+];
+
+const stampColorOptions = [
+    '#E8A598', '#FF6B6B', '#FF69B4', '#C44569',
+    '#FFA500', '#D4AF37', '#A8B5A0', '#4CAF50',
+    '#87CEEB', '#4169E1', '#00274C', '#9370DB',
+    '#000000', '#8B4513', '#2C3E50', '#FFFFFF',
+];
+
+let currentStampColor = '#E8A598';
+let currentBorder = 'none';
 
 const locationMap = {
     'pierpont_commons_01': 'Pierpont Commons, North Campus',
@@ -73,8 +98,9 @@ const categoryTitles = {
 window.onload = function() {
     initFromParams();
     initCanvas();
-    initColorPalettes();
+    initAccentColors();
     initTemplatePicker();
+    initDecorations();
     initEventListeners();
 };
 
@@ -171,17 +197,7 @@ function applyTemplateToCanvas() {
     }
 }
 
-function initColorPalettes() {
-    const palette = document.getElementById('colorPalette');
-    colors.forEach(color => {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        swatch.style.backgroundColor = color;
-        if (color === currentColor) swatch.classList.add('active');
-        swatch.onclick = () => selectColor(color, swatch);
-        palette.appendChild(swatch);
-    });
-
+function initAccentColors() {
     const accentPalette = document.getElementById('accentColors');
     accentColors.forEach(color => {
         const swatch = document.createElement('div');
@@ -195,19 +211,6 @@ function initColorPalettes() {
 }
 
 function initEventListeners() {
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-
-    canvas.addEventListener('touchstart', handleTouch);
-    canvas.addEventListener('touchmove', handleTouch);
-    canvas.addEventListener('touchend', stopDrawing);
-
-    document.getElementById('brushSize').addEventListener('input', (e) => {
-        brushSize = e.target.value;
-    });
-
     document.getElementById('messageText').addEventListener('input', (e) => {
         document.getElementById('charCount').textContent = e.target.value.length;
     });
@@ -216,13 +219,16 @@ function initEventListeners() {
         document.getElementById('messageText').style.fontFamily = e.target.value;
     });
 
-}
+    document.getElementById('stampText').addEventListener('input', updateSelectedStamp);
+    document.getElementById('stampOpacity').addEventListener('input', updateSelectedStamp);
+    document.getElementById('stampText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustomStamp(); } });
 
-function selectColor(color, swatch) {
-    currentColor = color;
-    currentTool = 'draw';
-    document.querySelectorAll('#colorPalette .color-swatch').forEach(s => s.classList.remove('active'));
-    swatch.classList.add('active');
+    document.addEventListener('mousedown', e => {
+        if (!e.target.closest('.deco-item') && !e.target.closest('.decoration-panel')) {
+            document.querySelectorAll('.deco-item').forEach(i => i.classList.remove('selected'));
+            selectedDecoItem = null;
+        }
+    });
 }
 
 function selectAccentColor(color, swatch) {
@@ -231,60 +237,360 @@ function selectAccentColor(color, swatch) {
     swatch.classList.add('active');
 }
 
-function setTool(tool, btn) {
-    currentTool = tool;
-    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-}
-
-function startDrawing(e) {
-    isDrawing = true;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-}
-
-function draw(e) {
-    if (!isDrawing) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    if (currentTool === 'erase') {
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
-    } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = currentColor;
-    }
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-}
-
-function stopDrawing() {
-    if (isDrawing) {
-        isDrawing = false;
-        saveHistory();
-    }
-}
-
-function handleTouch(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 'mousemove', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
+function initDecorations() {
+    // Preset chips → add stamp immediately
+    const presetsContainer = document.getElementById('stampPresets');
+    stamps.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'stamp-preset-btn';
+        btn.textContent = s.text;
+        btn.onclick = () => addStamp(s.text, s.color);
+        presetsContainer.appendChild(btn);
     });
-    canvas.dispatchEvent(mouseEvent);
+
+    // Color swatches
+    const palette = document.getElementById('stampColorPalette');
+    stampColorOptions.forEach(hex => {
+        const swatch = document.createElement('div');
+        swatch.className = 'stamp-color-swatch' + (hex === currentStampColor ? ' active' : '');
+        swatch.style.backgroundColor = hex;
+        if (hex === '#FFFFFF') swatch.style.border = '2px solid #ccc';
+        swatch.onclick = () => selectStampColor(hex);
+        palette.appendChild(swatch);
+    });
+
+    // Custom color picker
+    document.getElementById('stampColorCustom').addEventListener('input', e => selectStampColor(e.target.value));
+
+    // Emoji picker grid
+    const emojiPicker = document.getElementById('emojiPicker');
+    stickers.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.className = 'sticker-btn';
+        btn.textContent = emoji;
+        btn.onclick = () => appendEmoji(emoji);
+        emojiPicker.appendChild(btn);
+    });
+}
+
+function toggleEmojiPicker(btn) {
+    const picker = document.getElementById('emojiPicker');
+    const visible = picker.style.display !== 'none';
+    picker.style.display = visible ? 'none' : 'flex';
+    btn.style.opacity = visible ? '1' : '0.5';
+}
+
+function appendEmoji(emoji) {
+    if (selectedDecoItem && selectedDecoItem.dataset.type === 'stamp') {
+        const newText = selectedDecoItem.dataset.text + emoji;
+        selectedDecoItem.dataset.text = newText;
+        selectedDecoItem.querySelector('.stamp-text-content').textContent = newText;
+        document.getElementById('stampText').value = newText;
+    } else {
+        document.getElementById('stampText').value += emoji;
+    }
+}
+
+function selectStampColor(hex) {
+    currentStampColor = hex;
+    document.querySelectorAll('.stamp-color-swatch').forEach(s => {
+        s.classList.toggle('active', s.style.backgroundColor === hexToRgb(hex));
+    });
+    if (selectedDecoItem && selectedDecoItem.dataset.type === 'stamp') {
+        selectedDecoItem.dataset.color = hex;
+        selectedDecoItem.style.color = hex;
+    }
+}
+
+function selectDecoItem(el) {
+    document.querySelectorAll('.deco-item').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedDecoItem = el;
+
+    if (el.dataset.type === 'stamp') {
+        document.getElementById('stampText').value = el.dataset.text;
+        const opacity = Math.round(parseFloat(el.dataset.opacity || 0.88) * 100);
+        const slider = document.getElementById('stampOpacity');
+        slider.value = opacity;
+        slider.style.setProperty('--fill', opacity + '%');
+        document.getElementById('opacityVal').textContent = opacity;
+        selectStampColor(el.dataset.color);
+    }
+}
+
+function updateSelectedStamp() {
+    if (!selectedDecoItem || selectedDecoItem.dataset.type !== 'stamp') return;
+    const text = document.getElementById('stampText').value;
+    const opacity = parseFloat(document.getElementById('stampOpacity').value) / 100;
+    if (text.trim()) {
+        selectedDecoItem.dataset.text = text;
+        selectedDecoItem.querySelector('.stamp-text-content').textContent = text;
+    }
+    selectedDecoItem.dataset.opacity = opacity;
+    selectedDecoItem.style.opacity = opacity;
+}
+
+function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function addCustomStamp() {
+    const text = document.getElementById('stampText').value.trim();
+    if (!text) { document.getElementById('stampText').focus(); document.getElementById('stampText').style.borderColor='#e74c3c'; return; }
+    document.getElementById('stampText').style.borderColor = 'var(--sage)';
+    const opacity = parseFloat(document.getElementById('stampOpacity').value) / 100;
+    addStamp(text, currentStampColor, opacity);
+}
+
+function showDecoTab(tab, clickedBtn) {
+    document.querySelectorAll('.deco-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.deco-tab').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('decoTab-' + tab).style.display = 'flex';
+    if (clickedBtn) clickedBtn.classList.add('active');
+}
+
+function storeItemRatios(el) {
+    const overlay = document.getElementById('decorationsOverlay');
+    const oRect = overlay.getBoundingClientRect();
+    if (oRect.width === 0 || oRect.height === 0) return;
+    const iRect = el.getBoundingClientRect();
+    el.dataset.cxRatio = (iRect.left - oRect.left + iRect.width  / 2) / oRect.width;
+    el.dataset.cyRatio = (iRect.top  - oRect.top  + iRect.height / 2) / oRect.height;
+    el.dataset.sizeRatio = parseFloat(el.dataset.size) / oRect.width;
+}
+
+function addStamp(text, color, opacity = 0.88) {
+    if (!templateImage) { alert('Please choose a template first!'); return; }
+    const overlay = document.getElementById('decorationsOverlay');
+    const rect = overlay.getBoundingClientRect();
+
+    const el = document.createElement('div');
+    el.className = 'deco-item deco-stamp';
+    el.dataset.type = 'stamp';
+    el.dataset.text = text;
+    el.dataset.color = color;
+    el.dataset.opacity = opacity;
+
+    const initSize = Math.max(rect.width * 0.05, 13);
+    el.dataset.size = initSize;
+    el.style.cssText = `left:${rect.width*0.35}px; top:${rect.height*0.42}px; font-size:${initSize}px; color:${color}; opacity:${opacity};`;
+    el.innerHTML = `<span class="stamp-text-content">${text}</span><button class="deco-delete" onclick="this.parentElement.remove()">×</button><div class="resize-handle"></div>`;
+
+    overlay.appendChild(el);
+    requestAnimationFrame(() => storeItemRatios(el));
+    makeDraggable(el);
+    makeResizable(el, false);
+    selectDecoItem(el);
+}
+
+function addSticker(emoji) {
+    if (!templateImage) { alert('Please choose a template first!'); return; }
+    const overlay = document.getElementById('decorationsOverlay');
+    const rect = overlay.getBoundingClientRect();
+
+    const el = document.createElement('div');
+    el.className = 'deco-item deco-sticker';
+    el.dataset.type = 'sticker';
+    el.dataset.text = emoji;
+
+    const initSize = Math.max(rect.width * 0.12, 36);
+    el.dataset.size = initSize;
+    el.style.cssText = `left:${rect.width*0.4}px; top:${rect.height*0.4}px; font-size:${initSize}px; width:${initSize*1.3}px; height:${initSize*1.3}px;`;
+    el.innerHTML = `${emoji}<button class="deco-delete" onclick="this.parentElement.remove()">×</button><div class="resize-handle"></div>`;
+
+    overlay.appendChild(el);
+    requestAnimationFrame(() => storeItemRatios(el));
+    makeDraggable(el);
+    makeResizable(el, true);
+}
+
+function makeDraggable(el) {
+    const onStart = (clientX, clientY) => {
+        const startX = clientX, startY = clientY;
+        const startL = parseFloat(el.style.left) || 0;
+        const startT = parseFloat(el.style.top) || 0;
+
+        const onMove = (cx, cy) => {
+            el.style.left = (startL + cx - startX) + 'px';
+            el.style.top  = (startT + cy - startY) + 'px';
+        };
+        const onMouseMove = e => onMove(e.clientX, e.clientY);
+        const onTouchMove = e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); };
+        const cleanup = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', cleanup);
+            el.removeEventListener('touchmove', onTouchMove);
+            el.removeEventListener('touchend', cleanup);
+            storeItemRatios(el);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', cleanup);
+        el.addEventListener('touchmove', onTouchMove, { passive: false });
+        el.addEventListener('touchend', cleanup);
+    };
+    el.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('resize-handle') || e.target.classList.contains('deco-delete')) return;
+        e.preventDefault();
+        selectDecoItem(el);
+        onStart(e.clientX, e.clientY);
+    });
+    el.addEventListener('touchstart', e => {
+        if (e.target.classList.contains('resize-handle') || e.target.classList.contains('deco-delete')) return;
+        e.preventDefault();
+        selectDecoItem(el);
+        onStart(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+}
+
+function makeResizable(el, isSticker) {
+    const handle = el.querySelector('.resize-handle');
+    const onStart = (clientX, clientY) => {
+        const startX = clientX, startY = clientY;
+        const startSize = parseFloat(el.dataset.size);
+        const onMove = (cx, cy) => {
+            const delta = (cx - startX + cy - startY) * 0.4;
+            const minSize = isSticker ? 18 : 9;
+            const newSize = Math.max(minSize, startSize + delta);
+            el.dataset.size = newSize;
+            el.style.fontSize = newSize + 'px';
+            if (isSticker) { el.style.width = newSize * 1.3 + 'px'; el.style.height = newSize * 1.3 + 'px'; }
+        };
+        const onMouseMove = e => onMove(e.clientX, e.clientY);
+        const onTouchMove = e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); };
+        const cleanup = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', cleanup);
+            handle.removeEventListener('touchmove', onTouchMove);
+            handle.removeEventListener('touchend', cleanup);
+            storeItemRatios(el);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', cleanup);
+        handle.addEventListener('touchmove', onTouchMove, { passive: false });
+        handle.addEventListener('touchend', cleanup);
+    };
+    handle.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); onStart(e.clientX, e.clientY); });
+    handle.addEventListener('touchstart', e => { e.stopPropagation(); e.preventDefault(); onStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+}
+
+function compositeDecorations(targetCtx, targetW, targetH) {
+    const overlay = document.getElementById('decorationsOverlay');
+
+    // Try to update ratios if overlay is currently visible
+    const oRect = overlay.getBoundingClientRect();
+    if (oRect.width > 0 && oRect.height > 0) {
+        overlay.querySelectorAll('.deco-item').forEach(item => storeItemRatios(item));
+    }
+
+    overlay.querySelectorAll('.deco-item').forEach(item => {
+        const cxRatio   = parseFloat(item.dataset.cxRatio);
+        const cyRatio   = parseFloat(item.dataset.cyRatio);
+        const sizeRatio = parseFloat(item.dataset.sizeRatio);
+        if (isNaN(cxRatio) || isNaN(cyRatio) || isNaN(sizeRatio)) return;
+
+        const cx   = cxRatio   * targetW;
+        const cy   = cyRatio   * targetH;
+        const size = sizeRatio * targetW;
+        const text = item.dataset.text;
+
+        targetCtx.save();
+        targetCtx.textAlign    = 'center';
+        targetCtx.textBaseline = 'middle';
+
+        if (item.dataset.type === 'sticker') {
+            targetCtx.font = `${size}px Arial`;
+            targetCtx.fillText(text, cx, cy);
+        } else {
+            const color   = item.dataset.color;
+            const opacity = parseFloat(item.dataset.opacity || 0.88);
+            targetCtx.globalAlpha = opacity;
+            targetCtx.font        = `bold ${size}px Georgia, serif`;
+            targetCtx.fillStyle   = color;
+            targetCtx.fillText(text, cx, cy);
+        }
+        targetCtx.restore();
+    });
+}
+
+function drawRoundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+}
+
+function selectBorder(borderId, btn) {
+    currentBorder = borderId;
+    document.querySelectorAll('.border-option').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function drawBorder(targetCtx, w, h, style) {
+    if (style === 'none') return;
+    const m = Math.min(w, h) * 0.025;
+
+    targetCtx.save();
+    switch (style) {
+        case 'classic':
+            targetCtx.strokeStyle = 'rgba(0,0,0,0.55)';
+            targetCtx.lineWidth = Math.max(w * 0.009, 3);
+            targetCtx.strokeRect(m, m, w - m * 2, h - m * 2);
+            break;
+
+        case 'vintage':
+            targetCtx.strokeStyle = 'rgba(139,90,43,0.75)';
+            targetCtx.lineWidth = Math.max(w * 0.009, 3);
+            targetCtx.strokeRect(m, m, w - m * 2, h - m * 2);
+            targetCtx.lineWidth = Math.max(w * 0.003, 1);
+            targetCtx.setLineDash([w * 0.012, w * 0.012]);
+            targetCtx.strokeRect(m * 2.2, m * 2.2, w - m * 4.4, h - m * 4.4);
+            targetCtx.setLineDash([]);
+            break;
+
+        case 'double':
+            targetCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+            targetCtx.lineWidth = Math.max(w * 0.007, 2);
+            targetCtx.strokeRect(m, m, w - m * 2, h - m * 2);
+            targetCtx.lineWidth = Math.max(w * 0.003, 1);
+            targetCtx.strokeRect(m * 2.5, m * 2.5, w - m * 5, h - m * 5);
+            break;
+
+        case 'floral':
+            targetCtx.strokeStyle = 'rgba(232,165,152,0.8)';
+            targetCtx.lineWidth = Math.max(w * 0.005, 2);
+            targetCtx.strokeRect(m, m, w - m * 2, h - m * 2);
+            const flowerSize = Math.max(w * 0.08, 32);
+            targetCtx.font = `${flowerSize}px Arial`;
+            targetCtx.textAlign = 'center';
+            targetCtx.textBaseline = 'middle';
+            const offset = flowerSize * 0.65;
+            targetCtx.fillText('🌸', offset, offset);
+            targetCtx.fillText('🌸', w - offset, offset);
+            targetCtx.fillText('🌸', offset, h - offset);
+            targetCtx.fillText('🌸', w - offset, h - offset);
+            break;
+
+        case 'polaroid':
+            const bW = m * 2.5;
+            const bBot = m * 6;
+            targetCtx.fillStyle = 'rgba(255,255,255,0.92)';
+            targetCtx.fillRect(0, 0, w, bW);
+            targetCtx.fillRect(0, 0, bW, h);
+            targetCtx.fillRect(w - bW, 0, bW, h);
+            targetCtx.fillRect(0, h - bBot, w, bBot);
+            break;
+    }
+    targetCtx.restore();
 }
 
 function clearCanvas() {
@@ -299,15 +605,9 @@ function clearCanvas() {
 }
 
 function undo() {
-    if (historyStep > 0) {
-        historyStep--;
-        const img = new Image();
-        img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-        };
-        img.src = history[historyStep];
-    }
+    const overlay = document.getElementById('decorationsOverlay');
+    const items = overlay.querySelectorAll('.deco-item');
+    if (items.length > 0) items[items.length - 1].remove();
 }
 
 function saveHistory() {
@@ -357,6 +657,10 @@ function updatePreview() {
     previewCanvas.height = canvas.height;
     const previewCtx = previewCanvas.getContext('2d');
     previewCtx.drawImage(canvas, 0, 0);
+    compositeDecorations(previewCtx, previewCanvas.width, previewCanvas.height);
+    if (currentBorder !== 'none') {
+        drawBorder(previewCtx, previewCanvas.width, previewCanvas.height, currentBorder);
+    }
 
     const message = document.getElementById('messageText').value;
     const font = document.getElementById('fontSelect').value;
@@ -376,7 +680,16 @@ function updatePreview() {
 function generatePostcard() {
     const id = 'pc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
 
-    const canvasData = canvas.toDataURL('image/jpeg', 0.85);
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext('2d');
+    exportCtx.drawImage(canvas, 0, 0);
+    compositeDecorations(exportCtx, exportCanvas.width, exportCanvas.height);
+    if (currentBorder !== 'none') {
+        drawBorder(exportCtx, exportCanvas.width, exportCanvas.height, currentBorder);
+    }
+    const canvasData = exportCanvas.toDataURL('image/jpeg', 0.85);
 
     const postcardData = {
         id: id,

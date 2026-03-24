@@ -64,22 +64,41 @@
 
                     <div class="canvas-container">
                         <div class="canvas-section">
-                            <div class="tools">
-                                <h4>🎨 Color Palette</h4>
-                                <div class="color-palette" id="colorPalette"></div>
+                            <div class="decoration-panel">
+                                <!-- Preset stamps -->
+                                <div class="stamp-presets" id="stampPresets"></div>
 
-                                <h4>✏️ Tools</h4>
-                                <div class="tool-buttons">
-                                    <button class="tool-btn" onclick="setTool('draw', this)">Draw</button>
-                                    <button class="tool-btn" onclick="setTool('erase', this)">Eraser</button>
-                                    <button class="tool-btn" onclick="clearCanvas()">Clear</button>
-                                    <button class="tool-btn" onclick="undo()">Undo</button>
+                                <!-- Text + emoji toggle -->
+                                <div style="display:flex; gap:6px; align-items:stretch; margin-top:10px;">
+                                    <input type="text" id="stampText" placeholder="Type text, press Enter to add…" maxlength="60"
+                                           style="flex:1; padding:0 12px; height:42px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.88rem; box-sizing:border-box;">
+                                    <button class="emoji-toggle-btn" onclick="toggleEmojiPicker(this)" title="Add emoji" style="height:42px; width:42px; padding:0;">😊</button>
                                 </div>
 
-                                <h4>Brush Size</h4>
-                                <input type="range" min="1" max="20" value="3" id="brushSize" style="width: 100%;">
+                                <!-- Emoji picker (hidden by default) -->
+                                <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
+
+                                <!-- Color -->
+                                <div style="margin-top:6px;">
+                                    <div style="font-size:0.78rem; opacity:0.65; margin-bottom:6px;">Color</div>
+                                    <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+                                        <div id="stampColorPalette" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+                                        <input type="color" id="stampColorCustom" value="#E8A598" title="Custom color"
+                                               style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;">
+                                    </div>
+                                </div>
+
+                                <!-- Opacity -->
+                                <div>
+                                    <div style="font-size:0.78rem; opacity:0.65; margin-bottom:4px;">Opacity <span id="opacityVal">88</span>%</div>
+                                    <input type="range" id="stampOpacity" min="20" max="100" value="88" style="width:100%; --fill:88%;"
+                                           oninput="document.getElementById('opacityVal').textContent=this.value; this.style.setProperty('--fill', this.value+'%')">
+                                </div>
                             </div>
-                            <canvas id="drawingCanvas" width="600" height="800"></canvas>
+                            <div class="canvas-wrapper">
+                                <canvas id="drawingCanvas" width="600" height="800"></canvas>
+                                <div id="decorationsOverlay" class="decorations-overlay"></div>
+                            </div>
                         </div>
 
                         <div class="canvas-section">
