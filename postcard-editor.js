@@ -908,5 +908,24 @@ function shareViaGmail() {
         `${'─'.repeat(40)}\n` +
         `  Sent with PostCard · University of Michigan`
     );
-    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(recipient)}&su=${subject}&body=${body}`, '_blank');
+    const webUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(recipient)}&su=${subject}&body=${body}`;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    if (isIOS) {
+        // Try Gmail app first; if not installed, fall back to Gmail web after 1.5s
+        const gmailAppUrl = `googlegmail://co?to=${encodeURIComponent(recipient)}&subject=${subject}&body=${body}`;
+        const t = Date.now();
+        window.location.href = gmailAppUrl;
+        setTimeout(() => {
+            if (Date.now() - t < 2500) {
+                // App didn't open — still on page, redirect to web
+                window.open(webUrl, '_blank');
+            }
+        }, 1500);
+    } else if (isAndroid) {
+        window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`;
+    } else {
+        window.open(webUrl, '_blank');
+    }
 }
