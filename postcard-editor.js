@@ -908,10 +908,5 @@ function shareViaGmail() {
         `${'─'.repeat(40)}\n` +
         `  Sent with PostCard · University of Michigan`
     );
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-        window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`;
-    } else {
-        window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(recipient)}&su=${subject}&body=${body}`, '_blank');
-    }
+    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(recipient)}&su=${subject}&body=${body}`, '_blank');
 }
