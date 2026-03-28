@@ -35,50 +35,32 @@
 
         <!-- Editor (always active on this page) -->
         <div id="editor" class="section active">
-            <div class="progress-bar">
-                <div class="progress-step">
-                    <div class="progress-circle active" id="step1">1</div>
-                    <span>Customize</span>
-                </div>
-                <div class="progress-line"></div>
-                <div class="progress-step">
-                    <div class="progress-circle" id="step2">2</div>
-                    <span>Sender Info</span>
-                </div>
-                <div class="progress-line"></div>
-                <div class="progress-step">
-                    <div class="progress-circle" id="step3">3</div>
-                    <span>Preview</span>
-                </div>
-            </div>
+            <div class="editor">
+                <h2 id="editorTitle">Create Your Postcard</h2>
 
-            <!-- Step 1: Customize -->
-            <div id="editor-step1" class="editor-step">
-                <div class="editor">
-                    <h2 id="editorTitle">Create Your Postcard</h2>
-                    <!-- Template Picker -->
-                    <div class="template-picker">
-                        <h4>🖼️ Choose a Template</h4>
-                        <div class="template-grid" id="templateGrid"></div>
-                    </div>
+                <!-- Template Picker (full width above columns) -->
+                <div class="template-picker">
+                    <h4>🖼️ Choose a Template</h4>
+                    <div class="template-grid" id="templateGrid"></div>
+                </div>
 
-                    <div class="canvas-container">
-                        <div class="canvas-section">
-                            <div class="decoration-panel">
-                                <!-- Preset stamps -->
-                                <div class="stamp-presets" id="stampPresets"></div>
-
-                                <!-- Text + emoji toggle -->
+                <div class="canvas-container">
+                    <!-- LEFT: Front editor -->
+                    <div class="canvas-section">
+                        <h3 style="text-align:center; margin-bottom:12px; font-size:1.1rem; opacity:0.75; font-weight:normal; letter-spacing:0.05em;">FRONT</h3>
+                        <div class="decoration-panel">
+                            <div class="stamp-presets" id="stampPresets"></div>
+                            <div id="stampCustomArea" style="display:none;">
                                 <div style="display:flex; gap:6px; align-items:stretch; margin-top:10px;">
-                                    <input type="text" id="stampText" placeholder="Type text, press Enter to add…" maxlength="60"
+                                    <input type="text" id="stampText" placeholder="Type your text here…" maxlength="60"
                                            style="flex:1; padding:0 12px; height:42px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.88rem; box-sizing:border-box;">
                                     <button class="emoji-toggle-btn" onclick="toggleEmojiPicker(this)" title="Add emoji" style="height:42px; width:42px; padding:0;">😊</button>
+                                    <button onclick="addCustomStamp()" title="Add to front"
+                                        style="height:42px; padding:0 14px; background:var(--rose); color:white; border:none; border-radius:8px; font-family:Georgia,serif; font-size:0.9rem; cursor:pointer; white-space:nowrap;">
+                                        + Add
+                                    </button>
                                 </div>
-
-                                <!-- Emoji picker (hidden by default) -->
                                 <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
-
-                                <!-- Color -->
                                 <div style="margin-top:6px;">
                                     <div style="font-size:0.78rem; opacity:0.65; margin-bottom:6px;">Color</div>
                                     <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
@@ -87,110 +69,149 @@
                                                style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;">
                                     </div>
                                 </div>
-
-                                <!-- Opacity -->
                                 <div>
                                     <div style="font-size:0.78rem; opacity:0.65; margin-bottom:4px;">Opacity <span id="opacityVal">88</span>%</div>
                                     <input type="range" id="stampOpacity" min="20" max="100" value="88" style="width:100%; --fill:88%;"
                                            oninput="document.getElementById('opacityVal').textContent=this.value; this.style.setProperty('--fill', this.value+'%')">
                                 </div>
                             </div>
-                            <div class="canvas-wrapper">
-                                <canvas id="drawingCanvas" width="600" height="800"></canvas>
-                                <div id="decorationsOverlay" class="decorations-overlay"></div>
+                        </div>
+                        <!-- Blank canvas controls (only shown when blank template is active) -->
+                        <div id="blankCanvasControls" style="display:none;">
+                            <!-- Canvas ratio -->
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                                <span style="font-size:0.78rem; opacity:0.65;">Canvas ratio:</span>
+                                <div id="ratioButtons" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
+                            </div>
+                            <!-- Canvas background color -->
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                                <span style="font-size:0.78rem; opacity:0.65;">Canvas color:</span>
+                                <div id="bgColorPalette" style="display:flex; gap:5px;"></div>
+                                <input type="color" id="bgColorCustom" value="#FFF8F0" title="Custom background"
+                                    style="width:22px; height:22px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;"
+                                    oninput="setCanvasBackground(this.value)">
                             </div>
                         </div>
 
-                        <div class="canvas-section">
-                            <label>Your Message</label>
-                            <textarea id="messageText" placeholder="Write your heartfelt message here... Make it meaningful!" maxlength="500"></textarea>
-                            <div style="text-align: right; opacity: 0.6; margin-top: -15px; margin-bottom: 15px;">
+                        <!-- Draw mode toolbar -->
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                            <button id="drawModeBtn" onclick="toggleDrawMode()"
+                                style="padding:6px 14px; border:2px solid var(--sage); background:white; border-radius:20px; font-family:Georgia,serif; font-size:0.85rem; cursor:pointer; transition:all 0.2s;">
+                                ✏️ Draw
+                            </button>
+                            <div id="drawControls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <!-- Color swatches -->
+                                <div id="drawColorPalette" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
+                                <input type="color" id="drawColorCustom" value="#000000" title="Custom color"
+                                    style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;"
+                                    oninput="setDrawColor(this.value)">
+                                <!-- Brush size -->
+                                <select id="brushSize" onchange="setBrushSize(this.value)"
+                                    style="padding:4px 8px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.82rem; margin-bottom:0; width:auto;">
+                                    <option value="3">Fine</option>
+                                    <option value="6" selected>Medium</option>
+                                    <option value="12">Bold</option>
+                                    <option value="24">Thick</option>
+                                </select>
+                                <!-- Eraser -->
+                                <button id="eraserBtn" onclick="toggleEraser()"
+                                    style="padding:6px 12px; border:2px solid var(--sage); background:white; border-radius:20px; font-family:Georgia,serif; font-size:0.82rem; cursor:pointer;">
+                                    🧹 Eraser
+                                </button>
+                                <!-- Clear drawing -->
+                                <button onclick="clearDrawing()"
+                                    style="padding:6px 12px; border:2px solid #e74c3c; background:white; color:#e74c3c; border-radius:20px; font-family:Georgia,serif; font-size:0.82rem; cursor:pointer;">
+                                    🗑️ Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="canvas-wrapper">
+                            <canvas id="drawingCanvas" width="600" height="800"></canvas>
+                            <div id="decorationsOverlay" class="decorations-overlay"></div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Back editor -->
+                    <div class="canvas-section">
+                        <h3 style="text-align:center; margin-bottom:12px; font-size:1.1rem; opacity:0.75; font-weight:normal; letter-spacing:0.05em;">BACK</h3>
+
+                        <!-- Fields above card -->
+                        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+                            <div>
+                                <label style="font-size:0.85rem; margin-bottom:4px;">Choose Font</label>
+                                <select id="fontSelect" style="margin-bottom:0; padding:10px 12px; height:44px;">
+                                    <option value="Georgia, serif">Classic</option>
+                                    <option value="'Palatino', serif">Elegant</option>
+                                    <option value="'Courier New', monospace">Typewriter</option>
+                                    <option value="'Brush Script MT', cursive">Handwriting</option>
+                                    <option value="Arial, sans-serif">Modern</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.85rem; margin-bottom:4px;">From</label>
+                                <input type="text" id="senderName" placeholder="Your name or nickname" maxlength="50"
+                                    style="margin-bottom:0; padding:10px 12px; height:44px;"
+                                    oninput="document.getElementById('previewSenderName').textContent = this.value || 'Anonymous'">
+                            </div>
+                            <div>
+                                <label style="font-size:0.85rem; margin-bottom:4px;">Sent From</label>
+                                <select id="location" style="margin-bottom:0; padding:10px 12px; height:44px;"
+                                    onchange="onLocationChange(this.value)">
+                                    <option value="">Select location…</option>
+                                    <option value="Pierpont Commons, North Campus">Pierpont Commons, North Campus</option>
+                                    <option value="Duderstadt Center, North Campus">Duderstadt Center, North Campus</option>
+                                    <option value="Shapiro Library (UGLi), Central Campus">Shapiro Library (UGLi), Central Campus</option>
+                                    <option value="Michigan Union, Central Campus">Michigan Union, Central Campus</option>
+                                    <option value="North Campus">North Campus</option>
+                                    <option value="Central Campus">Central Campus</option>
+                                    <option value="Ann Arbor, MI">Ann Arbor, MI</option>
+                                    <option value="__custom__">Other…</option>
+                                </select>
+                                <input type="text" id="locationCustom" placeholder="Enter your location" maxlength="80"
+                                    style="display:none; margin-top:8px; margin-bottom:0; padding:10px 12px; height:44px;"
+                                    oninput="document.getElementById('previewLocation').textContent = this.value">
+                            </div>
+                            <div>
+                                <label style="font-size:0.85rem; margin-bottom:4px;">Occasion</label>
+                                <select id="occasionSelect" style="margin-bottom:0; padding:10px 12px; height:44px;" onchange="changeOccasion(this.value)">
+                                    <option value="umich-pride" data-emoji="〽️">〽️ UMich Pride</option>
+                                    <option value="miss-you" data-emoji="💭">💭 Miss You</option>
+                                    <option value="love" data-emoji="❤️">❤️ Love</option>
+                                    <option value="game-day" data-emoji="🏈">🏈 Game Day</option>
+                                    <option value="graduation" data-emoji="🎓">🎓 Graduation</option>
+                                    <option value="welcome-wolverine" data-emoji="🐺">🐺 Welcome Wolverine</option>
+                                    <option value="thank-you" data-emoji="🙏">🙏 Thank You</option>
+                                    <option value="congrats" data-emoji="🎉">🎉 Congrats</option>
+                                    <option value="encouragement" data-emoji="💪">💪 Encouragement</option>
+                                    <option value="birthday" data-emoji="🎂">🎂 Birthday</option>
+                                    <option value="checking-in" data-emoji="👋">👋 Checking In</option>
+                                    <option value="apology" data-emoji="🤝">🤝 Apology</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Postcard back preview (read-only display) -->
+                        <div class="postcard-side postcard-back" style="display:flex; flex-direction:column; min-height:400px; position:relative; padding:20px;">
+                            <textarea id="messageText" placeholder="Write your heartfelt message here…" maxlength="500"
+                                style="flex:1; background:transparent; border:none; resize:none; font-family:Georgia,serif; font-size:1rem; color:var(--navy); outline:none; padding:0; min-height:180px; line-height:1.6;"></textarea>
+                            <div style="text-align:right; opacity:0.45; font-size:0.78rem; margin-bottom:12px;">
                                 <span id="charCount">0</span>/500
                             </div>
-
-                            <label>Choose Font</label>
-                            <select id="fontSelect">
-                                <option value="Georgia, serif">Classic</option>
-                                <option value="'Palatino', serif">Elegant</option>
-                                <option value="'Courier New', monospace">Typewriter</option>
-                                <option value="'Brush Script MT', cursive">Handwriting</option>
-                                <option value="Arial, sans-serif">Modern</option>
-                            </select>
-
-                            <label>Accent Color</label>
-                            <div class="color-palette" id="accentColors"></div>
-
-                            <button class="cta-button" style="width: 100%; margin-top: 20px;" onclick="goToStep(2)">
-                                Continue to Sender Info →
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 2: Sender Info -->
-            <div id="editor-step2" class="editor-step" style="display: none;">
-                <div class="editor">
-                    <h2>Sender Information</h2>
-                    <p style="text-align: center; opacity: 0.7; margin-bottom: 30px;">
-                        How should the recipient see you?
-                    </p>
-
-                    <label>Your Name / Nickname</label>
-                    <input type="text" id="senderName" placeholder="Enter your name or nickname" maxlength="50">
-
-                    <label>Sent From</label>
-                    <select id="location">
-                        <option value="">Select location...</option>
-                        <option value="Pierpont Commons, North Campus">Pierpont Commons, North Campus</option>
-                        <option value="Duderstadt Center, North Campus">Duderstadt Center, North Campus</option>
-                        <option value="Shapiro Library (UGLi), Central Campus">Shapiro Library (UGLi), Central Campus</option>
-                        <option value="Michigan Union, Central Campus">Michigan Union, Central Campus</option>
-                        <option value="North Campus">North Campus</option>
-                        <option value="Central Campus">Central Campus</option>
-                        <option value="Ann Arbor, MI">Ann Arbor, MI</option>
-                    </select>
-
-                    <div class="action-buttons">
-                        <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
-                        <button class="cta-button" style="flex: 2;" onclick="goToStep(3)">Preview →</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 3: Preview -->
-            <div id="editor-step3" class="editor-step" style="display: none;">
-                <div class="editor">
-                    <h2>Preview Your Postcard</h2>
-                    <p style="text-align: center; opacity: 0.7; margin-bottom: 30px;">
-                        Check everything looks good before sending!
-                    </p>
-
-                    <div class="postcard-preview">
-                        <div class="postcard-sides">
-                            <div>
-                                <h3 style="text-align: center; margin-bottom: 15px;">Front</h3>
-                                <div class="postcard-side postcard-front">
-                                    <canvas id="previewCanvas" width="300" height="400" style="max-width: 100%;"></canvas>
+                            <div style="border-top:2px dashed rgba(0,0,0,0.15); padding-top:12px;">
+                                <div style="margin-bottom:6px; font-size:0.9rem;">
+                                    <strong>From:</strong> <span id="previewSenderName" style="font-family:Georgia,serif;">Anonymous</span>
                                 </div>
-                            </div>
-                            <div>
-                                <h3 style="text-align: center; margin-bottom: 15px;">Back</h3>
-                                <div class="postcard-side postcard-back">
-                                    <div id="previewMessage" style="font-size: 1.1rem; line-height: 1.6;"></div>
-                                    <div style="margin-top: 20px; padding-top: 20px; border-top: 2px dashed rgba(0,0,0,0.2);">
-                                        <div id="previewSender" style="margin-bottom: 10px;"><strong>From:</strong> <span></span></div>
-                                        <div id="previewLocation" style="opacity: 0.7; font-size: 0.9rem;"><strong>Sent from:</strong> <span></span></div>
-                                    </div>
-                                    <div class="stamp">💌</div>
+                                <div style="font-size:0.85rem; opacity:0.7;">
+                                    <strong>Sent from:</strong> <span id="previewLocation" style="font-family:Georgia,serif;"></span>
                                 </div>
+                                <div id="occasionWatermark" style="margin-top:10px; font-size:0.95rem; font-family:Georgia,serif; color:var(--navy);"></div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="action-buttons">
-                        <button class="btn-secondary" onclick="goToStep(2)">← Edit</button>
-                        <button class="cta-button" style="flex: 2;" onclick="generatePostcard()">Create & Share Link 🚀</button>
+                        <button class="cta-button" style="width:100%; margin-top:24px;" onclick="generatePostcard()">
+                            Share 🚀
+                        </button>
                     </div>
                 </div>
             </div>
