@@ -1,13 +1,9 @@
 /*
  * postcard-editor.js
- * Logic for the 3-step postcard creation flow (postcard-editor.html).
+ * Logic for the all-in-one postcard editor (postcard-editor.html).
  *
- * Step 1 – Customize: canvas drawing (colors, brush, eraser, undo), message text, font, accent color.
- * Step 2 – Sender Info: display name / nickname / anonymous, campus location (supports QR ?loc= param).
- * Step 3 – Preview: renders front + back preview, then generates a shareable postcard-view.html link.
- *
- * State is persisted to localStorage so postcard-view.html can load it by ID.
- * A full-size JPG composite (front + back, 1200×800) is also generated and cached in localStorage.
+ * Layout: occasion + template at top, then left = front+back preview, right = all controls.
+ * On completion, saves postcard data to localStorage and shows a share modal.
  */
 
 // Global state
@@ -28,10 +24,7 @@ let drawBrushSize = 6;
 let isEraser = false;
 let lastDrawX = 0, lastDrawY = 0;
 
-// Two-layer system:
-//   bgCanvas   = template / background color only
-//   drawLayer  = user drawings only (transparent bg)
-//   main canvas = composite of both
+// Two-layer system
 let bgCanvas = document.createElement('canvas');
 let bgCtx = bgCanvas.getContext('2d');
 let drawLayer = document.createElement('canvas');
@@ -156,6 +149,7 @@ const canvasRatios = [
 
 function initRatioButtons() {
     const container = document.getElementById('ratioButtons');
+    if (!container) return;
     canvasRatios.forEach((r, i) => {
         const btn = document.createElement('button');
         btn.textContent = r.label;
@@ -169,20 +163,14 @@ function initRatioButtons() {
 
 function setCanvasRatio(ratio, clickedBtn) {
     if (!confirm('Changing the canvas ratio will clear your current drawing. Continue?')) return;
-
     canvas.width = ratio.w;
     canvas.height = ratio.h;
-
-    // Reset draw layer to new size
     drawLayer.width = ratio.w;
     drawLayer.height = ratio.h;
     drawLayerCtx.clearRect(0, 0, ratio.w, ratio.h);
-
     syncBgCanvas();
     compositeAll();
     saveHistory();
-
-    // Update button styles
     document.querySelectorAll('#ratioButtons button').forEach(b => {
         b.style.background = 'white';
         b.style.color = '';
@@ -190,15 +178,14 @@ function setCanvasRatio(ratio, clickedBtn) {
     clickedBtn.style.background = 'var(--sage)';
     clickedBtn.style.color = 'white';
 }
-// ─────────────────────────────────────────────────────────────
 
 // ── Canvas background color ───────────────────────────────────
 let currentBgColor = '#FFF8F0';
-
 const bgColors = ['#FFF8F0', '#FFFFFF', '#FFF9C4', '#E8F5E9', '#E3F2FD', '#FCE4EC', '#2C3E50'];
 
 function initBgColorPalette() {
     const palette = document.getElementById('bgColorPalette');
+    if (!palette) return;
     bgColors.forEach(hex => {
         const s = document.createElement('div');
         s.style.cssText = `width:22px; height:22px; border-radius:50%; background:${hex}; cursor:pointer; border:2px solid ${hex === currentBgColor ? 'var(--navy)' : '#ccc'}; flex-shrink:0; transition:transform 0.15s;`;
@@ -213,18 +200,17 @@ function setCanvasBackground(hex) {
     syncBgCanvas();
     compositeAll();
     saveHistory();
-    // Update swatch borders
     document.querySelectorAll('#bgColorPalette div').forEach(s => {
         s.style.border = s.title === hex ? '2px solid var(--navy)' : '2px solid #ccc';
     });
-    document.getElementById('bgColorCustom').value = hex;
+    const picker = document.getElementById('bgColorCustom');
+    if (picker) picker.value = hex;
 }
-// ─────────────────────────────────────────────────────────────
 
 // ── Draw mode ────────────────────────────────────────────────
 function initDrawMode() {
-    // Color swatches
     const palette = document.getElementById('drawColorPalette');
+    if (!palette) return;
     drawColors.forEach(hex => {
         const s = document.createElement('div');
         s.style.cssText = `width:22px; height:22px; border-radius:50%; background:${hex}; cursor:pointer; border:2px solid ${hex === '#FFFFFF' ? '#ccc' : 'transparent'}; flex-shrink:0; transition:transform 0.15s;`;
@@ -240,14 +226,12 @@ function initDrawMode() {
         const pos = getCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
         startPaint(pos.x, pos.y);
     }, { passive: false });
-
     canvas.addEventListener('touchmove', e => {
         if (!isDrawMode || !isPainting) return;
         e.preventDefault();
         const pos = getCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
         paint(pos.x, pos.y);
     }, { passive: false });
-
     canvas.addEventListener('touchend', e => {
         if (!isDrawMode) return;
         e.preventDefault();
@@ -350,13 +334,13 @@ function toggleDrawMode() {
         btn.style.color = 'white';
         controls.style.display = 'flex';
         canvas.style.cursor = 'crosshair';
-        overlay.style.pointerEvents = 'none'; // disable deco interaction while drawing
+        if (overlay) overlay.style.pointerEvents = 'none';
     } else {
         btn.style.background = 'white';
         btn.style.color = '';
         controls.style.display = 'none';
         canvas.style.cursor = 'default';
-        overlay.style.pointerEvents = '';
+        if (overlay) overlay.style.pointerEvents = '';
         isEraser = false;
         document.getElementById('eraserBtn').style.background = 'white';
         document.getElementById('eraserBtn').style.color = '';
@@ -369,7 +353,6 @@ function setDrawColor(hex) {
     document.getElementById('eraserBtn').style.background = 'white';
     document.getElementById('eraserBtn').style.color = '';
     document.getElementById('drawColorCustom').value = hex;
-    // Highlight active swatch
     document.querySelectorAll('#drawColorPalette div').forEach(s => {
         s.style.border = s.title === hex ? '2px solid var(--navy)' : (s.title === '#FFFFFF' ? '2px solid #ccc' : '2px solid transparent');
         s.style.transform = s.title === hex ? 'scale(1.2)' : 'scale(1)';
@@ -392,8 +375,8 @@ function toggleEraser() {
     btn.style.background = isEraser ? 'var(--navy)' : 'white';
     btn.style.color = isEraser ? 'white' : '';
 }
-// ─────────────────────────────────────────────────────────────
 
+// ── Init ─────────────────────────────────────────────────────
 window.onload = function() {
     initFromParams();
     initCanvas();
@@ -411,8 +394,8 @@ window.onload = function() {
 
 function initFromParams() {
     const params = new URLSearchParams(window.location.search);
-    currentCategory = params.get('category') || 'custom';
-    currentCategoryEmoji = params.get('emoji') || '✨';
+    currentCategory = params.get('category') || 'umich-pride';
+    currentCategoryEmoji = params.get('emoji') || '〽️';
 
     const title = categoryTitles[currentCategory] || 'Custom';
     document.getElementById('editorTitle').textContent = title + ' ' + currentCategoryEmoji;
@@ -421,6 +404,16 @@ function initFromParams() {
     if (sel) sel.value = currentCategory;
 
     updateWatermark(title, currentCategoryEmoji);
+
+    // Handle QR code location from sessionStorage
+    const qrLoc = sessionStorage.getItem('qrLocation');
+    if (qrLoc) {
+        sessionStorage.removeItem('qrLocation');
+        if (locationMap[qrLoc]) {
+            document.getElementById('location').value = locationMap[qrLoc];
+            document.getElementById('previewLocation').textContent = locationMap[qrLoc];
+        }
+    }
 
     const loc = params.get('loc');
     if (loc && locationMap[loc]) {
@@ -467,10 +460,8 @@ function changeOccasion(category) {
 function initCanvas() {
     canvas = document.getElementById('drawingCanvas');
     ctx = canvas.getContext('2d');
-
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     drawTemplate();
     saveHistory();
 }
@@ -478,24 +469,19 @@ function initCanvas() {
 function drawTemplate() {
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2;
-
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-
     for (let i = 0; i < 6; i++) {
         const angle = (i / 6) * Math.PI * 2;
         const x = centerX + Math.cos(angle) * 100;
         const y = centerY + Math.sin(angle) * 100;
-
         ctx.beginPath();
         ctx.arc(x, y, 70, 0, Math.PI * 2);
         ctx.stroke();
     }
-
     ctx.beginPath();
     ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
     ctx.stroke();
-
     if (currentCategoryEmoji) {
         ctx.font = '60px Arial';
         ctx.textAlign = 'center';
@@ -507,6 +493,7 @@ function drawTemplate() {
 
 function initTemplatePicker() {
     const grid = document.getElementById('templateGrid');
+    if (!grid) return;
 
     // Blank template (first)
     const blankThumb = document.createElement('div');
@@ -531,32 +518,30 @@ function initTemplatePicker() {
 function selectBlankTemplate(thumb) {
     document.querySelectorAll('.template-thumb').forEach(t => t.classList.remove('active'));
     thumb.classList.add('active');
-
     canvas.width = 600;
     canvas.height = 800;
     const blankImg = new Image();
     blankImg.width = 600;
     blankImg.height = 800;
     templateImage = blankImg;
-
     syncBgCanvas();
     drawLayer.width = canvas.width;
     drawLayer.height = canvas.height;
     drawLayerCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
     compositeAll();
     saveHistory();
-    document.getElementById('blankCanvasControls').style.display = 'block';
+    const ctrl = document.getElementById('blankCanvasControls');
+    if (ctrl) ctrl.style.display = 'block';
 }
 
 function selectTemplate(src, thumb) {
     document.querySelectorAll('.template-thumb').forEach(t => t.classList.remove('active'));
     thumb.classList.add('active');
-    document.getElementById('blankCanvasControls').style.display = 'none';
-
+    const ctrl = document.getElementById('blankCanvasControls');
+    if (ctrl) ctrl.style.display = 'none';
     const img = new Image();
     img.onload = () => {
         templateImage = img;
-        // Use native image resolution (capped at 1800px wide) for sharp export
         const maxW = Math.min(img.naturalWidth, 1800);
         canvas.width = maxW;
         canvas.height = Math.round(maxW * (img.naturalHeight / img.naturalWidth));
@@ -581,6 +566,8 @@ function initAccentColors() {
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
         swatch.style.backgroundColor = color.hex;
+        swatch.style.width = '32px';
+        swatch.style.height = '32px';
         if (color.hex === currentAccentColor) swatch.classList.add('active');
         swatch.onclick = () => selectAccentColor(color.hex, swatch);
         swatch.title = color.name;
@@ -589,12 +576,22 @@ function initAccentColors() {
 }
 
 function initEventListeners() {
-    document.getElementById('messageText').addEventListener('input', (e) => {
+    const messageText = document.getElementById('messageText');
+    const backPreview = document.getElementById('backPreviewMessage');
+
+    // Live back preview: update as user types
+    messageText.addEventListener('input', (e) => {
         document.getElementById('charCount').textContent = e.target.value.length;
+        // Update live back preview
+        if (backPreview) {
+            backPreview.textContent = e.target.value || 'Your message will appear here…';
+            backPreview.style.fontFamily = document.getElementById('fontSelect').value;
+        }
     });
 
     document.getElementById('fontSelect').addEventListener('change', (e) => {
-        document.getElementById('messageText').style.fontFamily = e.target.value;
+        messageText.style.fontFamily = e.target.value;
+        if (backPreview) backPreview.style.fontFamily = e.target.value;
     });
 
     document.getElementById('stampText').addEventListener('input', updateSelectedStamp);
@@ -602,7 +599,7 @@ function initEventListeners() {
     document.getElementById('stampText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustomStamp(); } });
 
     document.addEventListener('mousedown', e => {
-        if (!e.target.closest('.deco-item') && !e.target.closest('.decoration-panel')) {
+        if (!e.target.closest('.deco-item') && !e.target.closest('.decoration-panel') && !e.target.closest('.control-group')) {
             document.querySelectorAll('.deco-item').forEach(i => i.classList.remove('selected'));
             selectedDecoItem = null;
         }
@@ -613,24 +610,25 @@ function selectAccentColor(color, swatch) {
     currentAccentColor = color;
     document.querySelectorAll('#accentColors .color-swatch').forEach(s => s.classList.remove('active'));
     swatch.classList.add('active');
+    // Update live back preview text color
+    const backPreview = document.getElementById('backPreviewMessage');
+    if (backPreview) backPreview.style.color = color;
 }
 
 function initDecorations() {
-    // Preset chips → add stamp immediately
     const presetsContainer = document.getElementById('stampPresets');
+    if (!presetsContainer) return;
 
-    // Custom text button (first)
+    // Custom text button
     const customBtn = document.createElement('button');
     customBtn.className = 'stamp-preset-btn';
     customBtn.textContent = '✏️ Custom Text';
     customBtn.onclick = () => {
         document.getElementById('stampCustomArea').style.display = 'block';
-        // Deselect any existing stamp so typing creates a new one
         document.querySelectorAll('.deco-item').forEach(i => i.classList.remove('selected'));
         selectedDecoItem = null;
         const input = document.getElementById('stampText');
         input.value = '';
-        // Delay focus until after the element is visible
         requestAnimationFrame(() => input.focus());
     };
     presetsContainer.appendChild(customBtn);
@@ -641,7 +639,6 @@ function initDecorations() {
         btn.textContent = s.text;
         btn.onclick = () => {
             document.getElementById('stampCustomArea').style.display = 'block';
-            // Deselect so the preset stamp is added fresh, not editing an existing one
             document.querySelectorAll('.deco-item').forEach(i => i.classList.remove('selected'));
             selectedDecoItem = null;
             document.getElementById('stampText').value = s.text;
@@ -652,27 +649,31 @@ function initDecorations() {
 
     // Color swatches
     const palette = document.getElementById('stampColorPalette');
-    stampColorOptions.forEach(hex => {
-        const swatch = document.createElement('div');
-        swatch.className = 'stamp-color-swatch' + (hex === currentStampColor ? ' active' : '');
-        swatch.style.backgroundColor = hex;
-        if (hex === '#FFFFFF') swatch.style.border = '2px solid #ccc';
-        swatch.onclick = () => selectStampColor(hex);
-        palette.appendChild(swatch);
-    });
+    if (palette) {
+        stampColorOptions.forEach(hex => {
+            const swatch = document.createElement('div');
+            swatch.className = 'stamp-color-swatch' + (hex === currentStampColor ? ' active' : '');
+            swatch.style.backgroundColor = hex;
+            if (hex === '#FFFFFF') swatch.style.border = '2px solid #ccc';
+            swatch.onclick = () => selectStampColor(hex);
+            palette.appendChild(swatch);
+        });
+    }
 
-    // Custom color picker
-    document.getElementById('stampColorCustom').addEventListener('input', e => selectStampColor(e.target.value));
+    const colorCustom = document.getElementById('stampColorCustom');
+    if (colorCustom) colorCustom.addEventListener('input', e => selectStampColor(e.target.value));
 
-    // Emoji picker grid
+    // Emoji picker
     const emojiPicker = document.getElementById('emojiPicker');
-    stickers.forEach(emoji => {
-        const btn = document.createElement('button');
-        btn.className = 'sticker-btn';
-        btn.textContent = emoji;
-        btn.onclick = () => appendEmoji(emoji);
-        emojiPicker.appendChild(btn);
-    });
+    if (emojiPicker) {
+        stickers.forEach(emoji => {
+            const btn = document.createElement('button');
+            btn.className = 'sticker-btn';
+            btn.textContent = emoji;
+            btn.onclick = () => appendEmoji(emoji);
+            emojiPicker.appendChild(btn);
+        });
+    }
 }
 
 function toggleEmojiPicker(btn) {
@@ -708,7 +709,6 @@ function selectDecoItem(el) {
     document.querySelectorAll('.deco-item').forEach(i => i.classList.remove('selected'));
     el.classList.add('selected');
     selectedDecoItem = el;
-
     if (el.dataset.type === 'stamp') {
         document.getElementById('stampText').value = el.dataset.text;
         const opacity = Math.round(parseFloat(el.dataset.opacity || 0.88) * 100);
@@ -747,13 +747,6 @@ function addCustomStamp() {
     addStamp(text, currentStampColor, opacity);
 }
 
-function showDecoTab(tab, clickedBtn) {
-    document.querySelectorAll('.deco-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.deco-tab').forEach(btn => btn.classList.remove('active'));
-    document.getElementById('decoTab-' + tab).style.display = 'flex';
-    if (clickedBtn) clickedBtn.classList.add('active');
-}
-
 function storeItemRatios(el) {
     const overlay = document.getElementById('decorationsOverlay');
     const oRect = overlay.getBoundingClientRect();
@@ -768,19 +761,16 @@ function addStamp(text, color, opacity = 0.88) {
     if (!templateImage) { alert('Please choose a template first!'); return; }
     const overlay = document.getElementById('decorationsOverlay');
     const rect = overlay.getBoundingClientRect();
-
     const el = document.createElement('div');
     el.className = 'deco-item deco-stamp';
     el.dataset.type = 'stamp';
     el.dataset.text = text;
     el.dataset.color = color;
     el.dataset.opacity = opacity;
-
     const initSize = Math.max(rect.width * 0.05, 13);
     el.dataset.size = initSize;
     el.style.cssText = `left:${rect.width*0.35}px; top:${rect.height*0.42}px; font-size:${initSize}px; color:${color}; opacity:${opacity};`;
     el.innerHTML = `<span class="stamp-text-content">${text}</span><button class="deco-delete" onclick="this.parentElement.remove()">×</button><div class="resize-handle"></div>`;
-
     overlay.appendChild(el);
     requestAnimationFrame(() => storeItemRatios(el));
     makeDraggable(el);
@@ -792,17 +782,14 @@ function addSticker(emoji) {
     if (!templateImage) { alert('Please choose a template first!'); return; }
     const overlay = document.getElementById('decorationsOverlay');
     const rect = overlay.getBoundingClientRect();
-
     const el = document.createElement('div');
     el.className = 'deco-item deco-sticker';
     el.dataset.type = 'sticker';
     el.dataset.text = emoji;
-
     const initSize = Math.max(rect.width * 0.12, 36);
     el.dataset.size = initSize;
     el.style.cssText = `left:${rect.width*0.4}px; top:${rect.height*0.4}px; font-size:${initSize}px; width:${initSize*1.3}px; height:${initSize*1.3}px;`;
     el.innerHTML = `${emoji}<button class="deco-delete" onclick="this.parentElement.remove()">×</button><div class="resize-handle"></div>`;
-
     overlay.appendChild(el);
     requestAnimationFrame(() => storeItemRatios(el));
     makeDraggable(el);
@@ -814,7 +801,6 @@ function makeDraggable(el) {
         const startX = clientX, startY = clientY;
         const startL = parseFloat(el.style.left) || 0;
         const startT = parseFloat(el.style.top) || 0;
-
         const onMove = (cx, cy) => {
             el.style.left = (startL + cx - startX) + 'px';
             el.style.top  = (startT + cy - startY) + 'px';
@@ -880,28 +866,22 @@ function makeResizable(el, isSticker) {
 
 function compositeDecorations(targetCtx, targetW, targetH) {
     const overlay = document.getElementById('decorationsOverlay');
-
-    // Try to update ratios if overlay is currently visible
     const oRect = overlay.getBoundingClientRect();
     if (oRect.width > 0 && oRect.height > 0) {
         overlay.querySelectorAll('.deco-item').forEach(item => storeItemRatios(item));
     }
-
     overlay.querySelectorAll('.deco-item').forEach(item => {
         const cxRatio   = parseFloat(item.dataset.cxRatio);
         const cyRatio   = parseFloat(item.dataset.cyRatio);
         const sizeRatio = parseFloat(item.dataset.sizeRatio);
         if (isNaN(cxRatio) || isNaN(cyRatio) || isNaN(sizeRatio)) return;
-
         const cx   = cxRatio   * targetW;
         const cy   = cyRatio   * targetH;
         const size = sizeRatio * targetW;
         const text = item.dataset.text;
-
         targetCtx.save();
         targetCtx.textAlign    = 'center';
         targetCtx.textBaseline = 'middle';
-
         if (item.dataset.type === 'sticker') {
             targetCtx.font = `${size}px Arial`;
             targetCtx.fillText(text, cx, cy);
@@ -917,30 +897,9 @@ function compositeDecorations(targetCtx, targetW, targetH) {
     });
 }
 
-function drawRoundRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-}
-
-function selectBorder(borderId, btn) {
-    currentBorder = borderId;
-    document.querySelectorAll('.border-option').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-}
-
 function drawBorder(targetCtx, w, h, style) {
     if (style === 'none') return;
     const m = Math.min(w, h) * 0.025;
-
     targetCtx.save();
     switch (style) {
         case 'classic':
@@ -948,7 +907,6 @@ function drawBorder(targetCtx, w, h, style) {
             targetCtx.lineWidth = Math.max(w * 0.009, 3);
             targetCtx.strokeRect(m, m, w - m * 2, h - m * 2);
             break;
-
         case 'vintage':
             targetCtx.strokeStyle = 'rgba(139,90,43,0.75)';
             targetCtx.lineWidth = Math.max(w * 0.009, 3);
@@ -958,7 +916,6 @@ function drawBorder(targetCtx, w, h, style) {
             targetCtx.strokeRect(m * 2.2, m * 2.2, w - m * 4.4, h - m * 4.4);
             targetCtx.setLineDash([]);
             break;
-
         case 'double':
             targetCtx.strokeStyle = 'rgba(0,0,0,0.5)';
             targetCtx.lineWidth = Math.max(w * 0.007, 2);
@@ -966,7 +923,6 @@ function drawBorder(targetCtx, w, h, style) {
             targetCtx.lineWidth = Math.max(w * 0.003, 1);
             targetCtx.strokeRect(m * 2.5, m * 2.5, w - m * 5, h - m * 5);
             break;
-
         case 'floral':
             targetCtx.strokeStyle = 'rgba(232,165,152,0.8)';
             targetCtx.lineWidth = Math.max(w * 0.005, 2);
@@ -981,7 +937,6 @@ function drawBorder(targetCtx, w, h, style) {
             targetCtx.fillText('🌸', offset, h - offset);
             targetCtx.fillText('🌸', w - offset, h - offset);
             break;
-
         case 'polaroid':
             const bW = m * 2.5;
             const bBot = m * 6;
@@ -995,17 +950,6 @@ function drawBorder(targetCtx, w, h, style) {
     targetCtx.restore();
 }
 
-function clearCanvas() {
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (templateImage) {
-        ctx.drawImage(templateImage, 0, 0, canvas.width, canvas.height);
-    } else {
-        drawTemplate();
-    }
-    saveHistory();
-}
-
 function undo() {
     const overlay = document.getElementById('decorationsOverlay');
     const items = overlay.querySelectorAll('.deco-item');
@@ -1016,13 +960,11 @@ function saveHistory() {
     historyStep++;
     history = history.slice(0, historyStep);
     history.push(canvas.toDataURL('image/jpeg', 0.85));
-    // Keep max 20 undo steps to avoid memory issues with high-res canvas
     if (history.length > 20) {
         history.shift();
         historyStep = history.length - 1;
     }
 }
-
 
 function generatePostcard() {
     const id = 'pc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
@@ -1052,21 +994,17 @@ function generatePostcard() {
         occasion: document.getElementById('occasionWatermark').textContent || ''
     };
 
-    // Store canvas separately in localStorage for same-device viewing
     try {
         localStorage.setItem('canvas_' + id, canvasData);
     } catch (e) {
         try {
             Object.keys(localStorage).filter(k => k.startsWith('canvas_')).forEach(k => localStorage.removeItem(k));
             localStorage.setItem('canvas_' + id, canvasData);
-        } catch (e2) {
-            // localStorage full even after cleanup — skip canvas caching, link will still work
-        }
+        } catch (e2) { }
     }
 
     generatePostcardImage(postcardData, id);
 
-    // Encode only text metadata in URL (no canvasData — keeps URL short)
     const urlMeta = {
         id: id,
         category: currentCategory,
@@ -1088,8 +1026,6 @@ function generatePostcard() {
 function generatePostcardImage(postcardData, id) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
-
-    // Canvas is already at native template resolution — no upscaling needed
     const scale = 1;
     const frontW = canvas.width * scale;
     const frontH = canvas.height * scale;
@@ -1101,40 +1037,32 @@ function generatePostcardImage(postcardData, id) {
 
     tempCtx.fillStyle = '#FFFFFF';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-    // Front panel
     tempCtx.fillStyle = '#FFF8F0';
     tempCtx.fillRect(pad, pad, frontW, frontH);
 
     const img = new Image();
     img.onload = () => {
         tempCtx.drawImage(img, pad, pad, frontW, frontH);
-
         tempCtx.strokeStyle = postcardData.accentColor;
         tempCtx.lineWidth = 3 * scale;
         tempCtx.strokeRect(pad, pad, frontW, frontH);
 
-        // Back panel
         const backX = pad + frontW + gap;
         tempCtx.fillStyle = '#FFF8F0';
         tempCtx.fillRect(backX, pad, frontW, frontH);
-
         tempCtx.strokeStyle = postcardData.accentColor;
         tempCtx.lineWidth = 3 * scale;
         tempCtx.strokeRect(backX, pad, frontW, frontH);
 
-        // Back panel text — all coords relative to backX, scaled up
         const tx = backX + 40 * scale;
         let ty = 60 * scale;
 
-        // Message text (navy, matching preview)
         tempCtx.fillStyle = '#2C3E50';
         tempCtx.font = `${24 * scale}px ${postcardData.font}`;
         tempCtx.textAlign = 'left';
 
         const maxWidth = (frontW - 80 * scale);
         const lineHeight = 36 * scale;
-
         const words = postcardData.message.split(' ');
         let line = '';
         for (let n = 0; n < words.length; n++) {
@@ -1149,7 +1077,6 @@ function generatePostcardImage(postcardData, id) {
         }
         tempCtx.fillText(line, tx, ty);
 
-        // Dashed divider line (matching preview)
         const dividerY = frontH - 140 * scale + pad;
         tempCtx.save();
         tempCtx.setLineDash([8 * scale, 6 * scale]);
@@ -1161,14 +1088,12 @@ function generatePostcardImage(postcardData, id) {
         tempCtx.stroke();
         tempCtx.restore();
 
-        // From
         ty = dividerY + 28 * scale;
         tempCtx.font = `bold ${18 * scale}px Georgia`;
         tempCtx.fillStyle = '#2C3E50';
         const senderText = postcardData.senderName || 'Anonymous';
         tempCtx.fillText('From:  ' + senderText, tx, ty);
 
-        // Sent from
         if (postcardData.location) {
             ty += 28 * scale;
             tempCtx.font = `bold ${16 * scale}px Georgia`;
@@ -1176,7 +1101,6 @@ function generatePostcardImage(postcardData, id) {
             tempCtx.fillText('Sent from:  ' + postcardData.location, tx, ty);
         }
 
-        // Occasion watermark
         if (postcardData.occasion) {
             ty += 26 * scale;
             tempCtx.font = `${15 * scale}px Georgia`;
@@ -1187,9 +1111,7 @@ function generatePostcardImage(postcardData, id) {
         const jpgDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
         try {
             localStorage.setItem('postcard_jpg_' + id, jpgDataUrl);
-        } catch (e) {
-            // localStorage full — download will generate on the fly
-        }
+        } catch (e) { }
 
         updateShareModal(id, jpgDataUrl);
     };
@@ -1205,7 +1127,6 @@ function updateShareModal(id, jpgDataUrl) {
     btn.style.marginBottom = '10px';
     btn.innerHTML = '📥 Download as JPG';
     btn.onclick = () => downloadPostcardJpg(id, jpgDataUrl);
-
     if (!existingBtn) {
         const gmailBtn = document.querySelector('#shareModal .cta-button');
         gmailBtn.after(btn);
@@ -1214,10 +1135,7 @@ function updateShareModal(id, jpgDataUrl) {
 
 function downloadPostcardJpg(id, jpgDataUrl) {
     const jpgData = jpgDataUrl || localStorage.getItem('postcard_jpg_' + id);
-    if (!jpgData) {
-        alert('Image not ready yet. Please wait a moment and try again.');
-        return;
-    }
+    if (!jpgData) { alert('Image not ready yet. Please wait a moment and try again.'); return; }
     const link = document.createElement('a');
     link.download = `postcard_${id}.jpg`;
     link.href = jpgData;
@@ -1230,9 +1148,7 @@ function closeModal() {
 
 function copyLink() {
     const url = document.getElementById('shareUrl').textContent;
-    navigator.clipboard.writeText(url).then(() => {
-        alert('Link copied to clipboard! 📋');
-    });
+    navigator.clipboard.writeText(url).then(() => { alert('Link copied to clipboard! 📋'); });
 }
 
 function shareViaGmail() {
@@ -1243,7 +1159,6 @@ function shareViaGmail() {
         return;
     }
     document.getElementById('recipientEmail').style.borderColor = 'var(--sage)';
-
     const url = document.getElementById('shareUrl').textContent;
     const sender = document.getElementById('senderName').value.trim() || 'Someone Special';
     const subject = encodeURIComponent('✉️ You\'ve got a postcard from ' + sender + '!');
@@ -1263,16 +1178,11 @@ function shareViaGmail() {
     const isAndroid = /Android/i.test(navigator.userAgent);
 
     if (isIOS) {
-        // When Gmail app opens, the browser page becomes hidden (visibilitychange fires).
-        // Only fall back to web if the page never went hidden after 2s (= app not installed).
         const gmailAppUrl = `googlegmail://co?to=${encodeURIComponent(recipient)}&subject=${subject}&body=${body}`;
         let appOpened = false;
-
         const onHide = () => { if (document.hidden) appOpened = true; };
         document.addEventListener('visibilitychange', onHide);
-
         window.location.href = gmailAppUrl;
-
         setTimeout(() => {
             document.removeEventListener('visibilitychange', onHide);
             if (!appOpened) window.open(webUrl, '_blank');

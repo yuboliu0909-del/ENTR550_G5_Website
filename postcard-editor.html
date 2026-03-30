@@ -1,249 +1,268 @@
 <!--
-  postcard-editor.html — Postcard Creation Page
-  Reached from Postcard.html after the user picks a category.
-  URL params: ?category=<slug>&emoji=<emoji>[&loc=<qr_code_id>]
-
-  Contains a 3-step wizard:
-    Step 1 — Customize: draw on canvas, write message, choose font & accent color
-    Step 2 — Sender Info: name/nickname/anonymous, campus location
-    Step 3 — Preview: front + back preview before generating the share link
-
-  On completion, saves postcard data to localStorage and shows a share modal
-  with a link pointing to postcard-view.html?view=<id>.
-  All interactivity is handled by postcard-editor.js.
+  postcard-editor.html — Postcard Creation Page (Restructured)
+  All-in-one editor: occasion, template, front/back preview on left, controls on right.
+  No separate "Choose a Situation" step — everything on one page.
+  On completion, saves postcard data and shows share modal.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Postcard - Virtual Postcard Platform</title>
-    <link rel="stylesheet" href="postcard.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Postcard - Virtual Postcard Platform</title>
+  <link rel="stylesheet" href="postcard.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="logo">
-                📮 PostCard
-            </div>
-            <nav>
-                <button onclick="window.location.href='Postcard.html'">Home</button>
-                <button onclick="window.location.href='Postcard.html#about'">About</button>
-            </nav>
-        </header>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">📮 PostCard</div>
+      <nav>
+        <button onclick="window.location.href='Postcard.html'">Home</button>
+        <button onclick="window.location.href='Postcard.html#about'">About</button>
+      </nav>
+    </header>
 
-        <!-- Editor (always active on this page) -->
-        <div id="editor" class="section active">
-            <div class="editor">
-                <h2 id="editorTitle">Create Your Postcard</h2>
+    <!-- Editor -->
+    <div id="editor" class="section active">
+      <div class="editor">
+        <h2 id="editorTitle">Create Your Postcard</h2>
 
-                <!-- Template Picker (full width above columns) -->
-                <div class="template-picker">
-                    <h4>🖼️ Choose a Template</h4>
-                    <div class="template-grid" id="templateGrid"></div>
-                </div>
-
-                <div class="canvas-container">
-                    <!-- LEFT: Front editor -->
-                    <div class="canvas-section">
-                        <h3 style="text-align:center; margin-bottom:12px; font-size:1.1rem; opacity:0.75; font-weight:normal; letter-spacing:0.05em;">FRONT</h3>
-                        <div class="decoration-panel">
-                            <div class="stamp-presets" id="stampPresets"></div>
-                            <div id="stampCustomArea" style="display:none;">
-                                <div style="display:flex; gap:6px; align-items:stretch; margin-top:10px;">
-                                    <input type="text" id="stampText" placeholder="Type your text here…" maxlength="60"
-                                           style="flex:1; padding:0 12px; height:42px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.88rem; box-sizing:border-box;">
-                                    <button class="emoji-toggle-btn" onclick="toggleEmojiPicker(this)" title="Add emoji" style="height:42px; width:42px; padding:0;">😊</button>
-                                    <button onclick="addCustomStamp()" title="Add to front"
-                                        style="height:42px; padding:0 14px; background:var(--rose); color:white; border:none; border-radius:8px; font-family:Georgia,serif; font-size:0.9rem; cursor:pointer; white-space:nowrap;">
-                                        + Add
-                                    </button>
-                                </div>
-                                <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
-                                <div style="margin-top:6px;">
-                                    <div style="font-size:0.78rem; opacity:0.65; margin-bottom:6px;">Color</div>
-                                    <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
-                                        <div id="stampColorPalette" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
-                                        <input type="color" id="stampColorCustom" value="#E8A598" title="Custom color"
-                                               style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;">
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style="font-size:0.78rem; opacity:0.65; margin-bottom:4px;">Opacity <span id="opacityVal">88</span>%</div>
-                                    <input type="range" id="stampOpacity" min="20" max="100" value="88" style="width:100%; --fill:88%;"
-                                           oninput="document.getElementById('opacityVal').textContent=this.value; this.style.setProperty('--fill', this.value+'%')">
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Blank canvas controls (only shown when blank template is active) -->
-                        <div id="blankCanvasControls" style="display:none;">
-                            <!-- Canvas ratio -->
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-                                <span style="font-size:0.78rem; opacity:0.65;">Canvas ratio:</span>
-                                <div id="ratioButtons" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
-                            </div>
-                            <!-- Canvas background color -->
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-                                <span style="font-size:0.78rem; opacity:0.65;">Canvas color:</span>
-                                <div id="bgColorPalette" style="display:flex; gap:5px;"></div>
-                                <input type="color" id="bgColorCustom" value="#FFF8F0" title="Custom background"
-                                    style="width:22px; height:22px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;"
-                                    oninput="setCanvasBackground(this.value)">
-                            </div>
-                        </div>
-
-                        <!-- Draw mode toolbar -->
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-                            <button id="drawModeBtn" onclick="toggleDrawMode()"
-                                style="padding:6px 14px; border:2px solid var(--sage); background:white; border-radius:20px; font-family:Georgia,serif; font-size:0.85rem; cursor:pointer; transition:all 0.2s;">
-                                ✏️ Draw
-                            </button>
-                            <div id="drawControls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <!-- Color swatches -->
-                                <div id="drawColorPalette" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
-                                <input type="color" id="drawColorCustom" value="#000000" title="Custom color"
-                                    style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;"
-                                    oninput="setDrawColor(this.value)">
-                                <!-- Brush size -->
-                                <select id="brushSize" onchange="setBrushSize(this.value)"
-                                    style="padding:4px 8px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.82rem; margin-bottom:0; width:auto;">
-                                    <option value="3">Fine</option>
-                                    <option value="6" selected>Medium</option>
-                                    <option value="12">Bold</option>
-                                    <option value="24">Thick</option>
-                                </select>
-                                <!-- Eraser -->
-                                <button id="eraserBtn" onclick="toggleEraser()"
-                                    style="padding:6px 12px; border:2px solid var(--sage); background:white; border-radius:20px; font-family:Georgia,serif; font-size:0.82rem; cursor:pointer;">
-                                    🧹 Eraser
-                                </button>
-                                <!-- Clear drawing -->
-                                <button onclick="clearDrawing()"
-                                    style="padding:6px 12px; border:2px solid #e74c3c; background:white; color:#e74c3c; border-radius:20px; font-family:Georgia,serif; font-size:0.82rem; cursor:pointer;">
-                                    🗑️ Clear
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="canvas-wrapper">
-                            <canvas id="drawingCanvas" width="600" height="800"></canvas>
-                            <div id="decorationsOverlay" class="decorations-overlay"></div>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT: Back editor -->
-                    <div class="canvas-section">
-                        <h3 style="text-align:center; margin-bottom:12px; font-size:1.1rem; opacity:0.75; font-weight:normal; letter-spacing:0.05em;">BACK</h3>
-
-                        <!-- Fields above card -->
-                        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
-                            <div>
-                                <label style="font-size:0.85rem; margin-bottom:4px;">Choose Font</label>
-                                <select id="fontSelect" style="margin-bottom:0; padding:10px 12px; height:44px;">
-                                    <option value="Georgia, serif">Classic</option>
-                                    <option value="'Palatino', serif">Elegant</option>
-                                    <option value="'Courier New', monospace">Typewriter</option>
-                                    <option value="'Brush Script MT', cursive">Handwriting</option>
-                                    <option value="Arial, sans-serif">Modern</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:0.85rem; margin-bottom:4px;">From</label>
-                                <input type="text" id="senderName" placeholder="Your name or nickname" maxlength="50"
-                                    style="margin-bottom:0; padding:10px 12px; height:44px;"
-                                    oninput="document.getElementById('previewSenderName').textContent = this.value || 'Anonymous'">
-                            </div>
-                            <div>
-                                <label style="font-size:0.85rem; margin-bottom:4px;">Sent From</label>
-                                <select id="location" style="margin-bottom:0; padding:10px 12px; height:44px;"
-                                    onchange="onLocationChange(this.value)">
-                                    <option value="">Select location…</option>
-                                    <option value="Pierpont Commons, North Campus">Pierpont Commons, North Campus</option>
-                                    <option value="Duderstadt Center, North Campus">Duderstadt Center, North Campus</option>
-                                    <option value="Shapiro Library (UGLi), Central Campus">Shapiro Library (UGLi), Central Campus</option>
-                                    <option value="Michigan Union, Central Campus">Michigan Union, Central Campus</option>
-                                    <option value="North Campus">North Campus</option>
-                                    <option value="Central Campus">Central Campus</option>
-                                    <option value="Ann Arbor, MI">Ann Arbor, MI</option>
-                                    <option value="__custom__">Other…</option>
-                                </select>
-                                <input type="text" id="locationCustom" placeholder="Enter your location" maxlength="80"
-                                    style="display:none; margin-top:8px; margin-bottom:0; padding:10px 12px; height:44px;"
-                                    oninput="document.getElementById('previewLocation').textContent = this.value">
-                            </div>
-                            <div>
-                                <label style="font-size:0.85rem; margin-bottom:4px;">Occasion</label>
-                                <select id="occasionSelect" style="margin-bottom:0; padding:10px 12px; height:44px;" onchange="changeOccasion(this.value)">
-                                    <option value="umich-pride" data-emoji="〽️">〽️ UMich Pride</option>
-                                    <option value="miss-you" data-emoji="💭">💭 Miss You</option>
-                                    <option value="love" data-emoji="❤️">❤️ Love</option>
-                                    <option value="game-day" data-emoji="🏈">🏈 Game Day</option>
-                                    <option value="graduation" data-emoji="🎓">🎓 Graduation</option>
-                                    <option value="welcome-wolverine" data-emoji="🐺">🐺 Welcome Wolverine</option>
-                                    <option value="thank-you" data-emoji="🙏">🙏 Thank You</option>
-                                    <option value="congrats" data-emoji="🎉">🎉 Congrats</option>
-                                    <option value="encouragement" data-emoji="💪">💪 Encouragement</option>
-                                    <option value="birthday" data-emoji="🎂">🎂 Birthday</option>
-                                    <option value="checking-in" data-emoji="👋">👋 Checking In</option>
-                                    <option value="apology" data-emoji="🤝">🤝 Apology</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Postcard back preview (read-only display) -->
-                        <div class="postcard-side postcard-back" style="display:flex; flex-direction:column; min-height:400px; position:relative; padding:20px;">
-                            <textarea id="messageText" placeholder="Write your heartfelt message here…" maxlength="500"
-                                style="flex:1; background:transparent; border:none; resize:none; font-family:Georgia,serif; font-size:1rem; color:var(--navy); outline:none; padding:0; min-height:180px; line-height:1.6;"></textarea>
-                            <div style="text-align:right; opacity:0.45; font-size:0.78rem; margin-bottom:12px;">
-                                <span id="charCount">0</span>/500
-                            </div>
-                            <div style="border-top:2px dashed rgba(0,0,0,0.15); padding-top:12px;">
-                                <div style="margin-bottom:6px; font-size:0.9rem;">
-                                    <strong>From:</strong> <span id="previewSenderName" style="font-family:Georgia,serif;">Anonymous</span>
-                                </div>
-                                <div style="font-size:0.85rem; opacity:0.7;">
-                                    <strong>Sent from:</strong> <span id="previewLocation" style="font-family:Georgia,serif;"></span>
-                                </div>
-                                <div id="occasionWatermark" style="margin-top:10px; font-size:0.95rem; font-family:Georgia,serif; color:var(--navy);"></div>
-                            </div>
-                        </div>
-
-                        <button class="cta-button" style="width:100%; margin-top:24px;" onclick="generatePostcard()">
-                            Share 🚀
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <!-- Step 1: Occasion -->
+        <div class="editor-step">
+          <label style="font-size: 1rem; margin-bottom: 8px;">1. Choose Occasion</label>
+          <select id="occasionSelect" style="margin-bottom: 0; padding: 10px 12px; height: 44px;" onchange="changeOccasion(this.value)">
+            <option value="umich-pride" data-emoji="〽️">〽️ UMich Pride</option>
+            <option value="miss-you" data-emoji="💭">💭 Miss You</option>
+            <option value="love" data-emoji="❤️">❤️ Love</option>
+            <option value="game-day" data-emoji="🏈">🏈 Game Day</option>
+            <option value="graduation" data-emoji="🎓">🎓 Graduation</option>
+            <option value="welcome-wolverine" data-emoji="🐺">🐺 Welcome Wolverine</option>
+            <option value="thank-you" data-emoji="🙏">🙏 Thank You</option>
+            <option value="congrats" data-emoji="🎉">🎉 Congrats</option>
+            <option value="encouragement" data-emoji="💪">💪 Encouragement</option>
+            <option value="birthday" data-emoji="🎂">🎂 Birthday</option>
+            <option value="checking-in" data-emoji="👋">👋 Checking In</option>
+            <option value="apology" data-emoji="🤝">🤝 Apology</option>
+          </select>
         </div>
 
-        <footer>
-            <p>Made with ❤️ for meaningful connections</p>
-            <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
-        </footer>
-    </div>
-
-    <!-- Share Modal -->
-    <div id="shareModal" class="modal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()">×</button>
-            <h2>🎉 Postcard Created!</h2>
-            <div id="shareUrl" style="display:none;"></div>
-            <input type="email" id="recipientEmail" placeholder="Recipient's email address"
-                style="width:100%; padding:12px 15px; border:2px solid var(--sage); border-radius:10px;
-                       font-size:1rem; margin-bottom:15px; box-sizing:border-box; font-family:inherit;">
-            <button class="cta-button" onclick="shareViaGmail()" style="width: 100%; margin-bottom: 10px; background: #4285F4;">
-                ✉️ Send via Gmail
-            </button>
-            <button class="cta-button" onclick="copyLink()" style="width: 100%; margin-bottom: 10px;">
-                📋 Copy Link
-            </button>
-            <button class="btn-secondary" onclick="closeModal(); window.location.href='Postcard.html';" style="width: 100%;">
-                Create Another Postcard
-            </button>
+        <!-- Step 2: Template Picker -->
+        <div class="editor-step">
+          <label style="font-size: 1rem; margin-bottom: 8px;">2. Choose a Template</label>
+          <div class="template-grid" id="templateGrid"></div>
         </div>
+
+        <!-- Main Layout: Left = Previews, Right = Controls -->
+        <div class="editor-layout">
+
+          <!-- LEFT COLUMN: Front + Back Preview -->
+          <div class="editor-preview-col">
+
+            <!-- FRONT preview -->
+            <div class="preview-block">
+              <h3 class="preview-label">FRONT</h3>
+              <div class="canvas-wrapper">
+                <canvas id="drawingCanvas" width="600" height="800"></canvas>
+                <div id="decorationsOverlay" class="decorations-overlay"></div>
+              </div>
+            </div>
+
+            <!-- BACK preview (live) -->
+            <div class="preview-block">
+              <h3 class="preview-label">BACK</h3>
+              <div class="postcard-side postcard-back" style="min-height: 300px; position: relative; padding: 20px;">
+                <div id="backPreviewMessage" style="flex: 1; font-family: Georgia, serif; font-size: 1rem; color: var(--navy); line-height: 1.6; min-height: 100px; white-space: pre-wrap; word-wrap: break-word;">Your message will appear here…</div>
+                <div style="border-top: 2px dashed rgba(0,0,0,0.15); padding-top: 12px; margin-top: 12px;">
+                  <div style="margin-bottom: 6px; font-size: 0.9rem;">
+                    <strong>From:</strong> <span id="previewSenderName" style="font-family: Georgia, serif;">Anonymous</span>
+                  </div>
+                  <div style="font-size: 0.85rem; opacity: 0.7;">
+                    <strong>Sent from:</strong> <span id="previewLocation" style="font-family: Georgia, serif;"></span>
+                  </div>
+                  <div id="occasionWatermark" style="margin-top: 10px; font-size: 0.95rem; font-family: Georgia, serif; color: var(--navy);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: All Controls -->
+          <div class="editor-controls-col">
+
+            <!-- Front of Card controls -->
+            <div class="control-group">
+              <h4 class="control-group-title">Text For Front of Card</h4>
+              <div class="stamp-presets" id="stampPresets"></div>
+              <div id="stampCustomArea" style="display:none;">
+                <div style="display:flex; gap:6px; align-items:stretch; margin-top:10px;">
+                  <input type="text" id="stampText" placeholder="Type your text here…" maxlength="60"
+                    style="flex:1; padding:0 12px; height:42px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.88rem; box-sizing:border-box; margin-bottom:0;">
+                  <button class="emoji-toggle-btn" onclick="toggleEmojiPicker(this)" title="Add emoji" style="height:42px; width:42px; padding:0;">😊</button>
+                  <button onclick="addCustomStamp()" title="Add to front"
+                    style="height:42px; padding:0 14px; background:var(--rose); color:white; border:none; border-radius:8px; font-family:Georgia,serif; font-size:0.9rem; cursor:pointer; white-space:nowrap;">
+                    + Add
+                  </button>
+                </div>
+                <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
+                <div style="margin-top:6px;">
+                  <div style="font-size:0.78rem; opacity:0.65; margin-bottom:6px;">Color</div>
+                  <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+                    <div id="stampColorPalette" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+                    <input type="color" id="stampColorCustom" value="#E8A598" title="Custom color"
+                      style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;">
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:0.78rem; opacity:0.65; margin-bottom:4px;">Opacity <span id="opacityVal">88</span>%</div>
+                  <input type="range" id="stampOpacity" min="20" max="100" value="88" style="width:100%; --fill:88%;"
+                    oninput="document.getElementById('opacityVal').textContent=this.value; this.style.setProperty('--fill', this.value+'%')">
+                </div>
+              </div>
+            </div>
+
+            <!-- Blank canvas controls -->
+            <div id="blankCanvasControls" class="control-group" style="display:none;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                <span style="font-size:0.78rem; opacity:0.65;">Canvas ratio:</span>
+                <div id="ratioButtons" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                <span style="font-size:0.78rem; opacity:0.65;">Canvas color:</span>
+                <div id="bgColorPalette" style="display:flex; gap:5px;"></div>
+                <input type="color" id="bgColorCustom" value="#FFF8F0" title="Custom background"
+                  style="width:22px; height:22px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;"
+                  oninput="setCanvasBackground(this.value)">
+              </div>
+            </div>
+
+            <!-- Draw mode toolbar -->
+            <div class="control-group">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <button id="drawModeBtn" onclick="toggleDrawMode()"
+                  style="padding:6px 14px; border:2px solid var(--sage); background:white; border-radius:20px; font-family:Georgia,serif; font-size:0.85rem; cursor:pointer; transition:all 0.2s;">
+                  ✏️ Draw
+                </button>
+                <div id="drawControls" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <div id="drawColorPalette" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
+                  <input type="color" id="drawColorCustom" value="#000000" title="Custom color"
+                    style="width:26px; height:26px; border:2px solid #ccc; border-radius:50%; cursor:pointer; padding:0;"
+                    oninput="setDrawColor(this.value)">
+                  <select id="brushSize" onchange="setBrushSize(this.value)"
+                    style="padding:4px 8px; border:2px solid var(--sage); border-radius:8px; font-family:Georgia,serif; font-size:0.82rem; margin-bottom:0; width:auto;">
+                    <option value="3">Fine</option>
+                    <option value="6" selected>Medium</option>
+                    <option value="12">Bold</option>
+                    <option value="24">Thick</option>
+                  </select>
+                  <button id="eraserBtn" onclick="toggleEraser()"
+                    style="padding:6px 12px; border:2px solid var(--sage); background:white; border-radius:20px; font-family:Georgia,serif; font-size:0.82rem; cursor:pointer;">
+                    🧹 Eraser
+                  </button>
+                  <button onclick="clearDrawing()"
+                    style="padding:6px 12px; border:2px solid #e74c3c; background:white; color:#e74c3c; border-radius:20px; font-family:Georgia,serif; font-size:0.82rem; cursor:pointer;">
+                    🗑️ Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Back of Card controls -->
+            <div class="control-group">
+              <h4 class="control-group-title">Back of Card</h4>
+
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                <div>
+                  <label style="font-size:0.85rem; margin-bottom:4px;">Your Message</label>
+                  <textarea id="messageText" placeholder="Write your heartfelt message here…" maxlength="500"
+                    style="min-height:120px; margin-bottom:0;"></textarea>
+                  <div style="text-align:right; opacity:0.45; font-size:0.78rem;">
+                    <span id="charCount">0</span>/500
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size:0.85rem; margin-bottom:4px;">From</label>
+                  <input type="text" id="senderName" placeholder="Your name or nickname" maxlength="50"
+                    style="margin-bottom:0; padding:10px 12px; height:44px;"
+                    oninput="document.getElementById('previewSenderName').textContent = this.value || 'Anonymous'">
+                </div>
+
+                <div>
+                  <label style="font-size:0.85rem; margin-bottom:4px;">Sent From</label>
+                  <select id="location" style="margin-bottom:0; padding:10px 12px; height:44px;"
+                    onchange="onLocationChange(this.value)">
+                    <option value="">Select location…</option>
+                    <option value="Pierpont Commons, North Campus">Pierpont Commons, North Campus</option>
+                    <option value="Duderstadt Center, North Campus">Duderstadt Center, North Campus</option>
+                    <option value="Shapiro Library (UGLi), Central Campus">Shapiro Library (UGLi), Central Campus</option>
+                    <option value="Michigan Union, Central Campus">Michigan Union, Central Campus</option>
+                    <option value="North Campus">North Campus</option>
+                    <option value="Central Campus">Central Campus</option>
+                    <option value="Ann Arbor, MI">Ann Arbor, MI</option>
+                    <option value="__custom__">Other…</option>
+                  </select>
+                  <input type="text" id="locationCustom" placeholder="Enter your location" maxlength="80"
+                    style="display:none; margin-top:8px; margin-bottom:0; padding:10px 12px; height:44px;"
+                    oninput="document.getElementById('previewLocation').textContent = this.value">
+                </div>
+
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                  <div style="flex:1; min-width:140px;">
+                    <label style="font-size:0.85rem; margin-bottom:4px;">Choose Font</label>
+                    <select id="fontSelect" style="margin-bottom:0; padding:10px 12px; height:44px;">
+                      <option value="Georgia, serif">Classic</option>
+                      <option value="'Palatino', serif">Elegant</option>
+                      <option value="'Courier New', monospace">Typewriter</option>
+                      <option value="'Brush Script MT', cursive">Handwriting</option>
+                      <option value="Arial, sans-serif">Modern</option>
+                    </select>
+                  </div>
+                  <div style="flex:1; min-width:140px;">
+                    <label style="font-size:0.85rem; margin-bottom:4px;">Back Text Color</label>
+                    <div id="accentColors" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SHARE Button -->
+            <button class="cta-button" style="width:100%; margin-top:16px;" onclick="generatePostcard()">
+              SHARE
+            </button>
+
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <script src="postcard-editor.js"></script>
+    <footer>
+      <p>Made with ❤️ for meaningful connections</p>
+      <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
+    </footer>
+  </div>
+
+  <!-- Share Modal -->
+  <div id="shareModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <h2>🎉 Postcard Created!</h2>
+      <div id="shareUrl" style="display:none;"></div>
+      <input type="email" id="recipientEmail" placeholder="Recipient's email address"
+        style="width:100%; padding:12px 15px; border:2px solid var(--sage); border-radius:10px;
+        font-size:1rem; margin-bottom:15px; box-sizing:border-box; font-family:inherit;">
+      <button class="cta-button" onclick="shareViaGmail()" style="width: 100%; margin-bottom: 10px; background: #4285F4;">
+        ✉️ Send via Gmail
+      </button>
+      <button class="cta-button" onclick="copyLink()" style="width: 100%; margin-bottom: 10px;">
+        📋 Copy Link
+      </button>
+      <button class="btn-secondary" onclick="closeModal(); window.location.href='Postcard.html';" style="width: 100%;">
+        Create Another Postcard
+      </button>
+    </div>
+  </div>
+
+  <script src="postcard-editor.js"></script>
 </body>
 </html>

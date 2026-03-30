@@ -1,12 +1,6 @@
 /*
  * postcard-view.js
  * Logic for the received-postcard page (postcard-view.html).
- *
- * On load: reads the ?view=<id> URL parameter, fetches the postcard data
- * from localStorage, and renders the front canvas and back message/sender/location.
- *
- * Also handles JPG download: uses a pre-generated image if available,
- * otherwise regenerates the full 1200×800 composite on the fly.
  */
 
 window.onload = function() {
@@ -32,7 +26,6 @@ function loadPostcard(postcard) {
 }
 
 function renderPostcard(postcard) {
-    // Try localStorage first (same device), fall back to emoji placeholder
     const canvasData = postcard.canvasData || (postcard.id && localStorage.getItem('canvas_' + postcard.id));
     const frontEl = document.getElementById('viewFront');
 
@@ -84,21 +77,18 @@ function generatePostcardImageForDownload(postcardData, id) {
 
     tempCtx.fillStyle = '#FFFFFF';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
     tempCtx.fillStyle = '#FFF8F0';
     tempCtx.fillRect(10, 10, 580, 780);
 
     const img = new Image();
     img.onload = () => {
         tempCtx.drawImage(img, 20, 20, 560, 747);
-
         tempCtx.strokeStyle = postcardData.accentColor;
         tempCtx.lineWidth = 3;
         tempCtx.strokeRect(10, 10, 580, 780);
 
         tempCtx.fillStyle = '#FFF8F0';
         tempCtx.fillRect(610, 10, 580, 780);
-
         tempCtx.strokeStyle = postcardData.accentColor;
         tempCtx.lineWidth = 3;
         tempCtx.strokeRect(610, 10, 580, 780);
@@ -114,11 +104,9 @@ function generatePostcardImageForDownload(postcardData, id) {
 
         const words = postcardData.message.split(' ');
         let line = '';
-
         for (let n = 0; n < words.length; n++) {
             const testLine = line + words[n] + ' ';
             const testWidth = tempCtx.measureText(testLine).width;
-
             if (testWidth > maxWidth && n > 0) {
                 tempCtx.fillText(line, x, y);
                 line = words[n] + ' ';
@@ -132,7 +120,6 @@ function generatePostcardImageForDownload(postcardData, id) {
         y = 680;
         tempCtx.font = '20px Georgia';
         tempCtx.fillStyle = '#2C3E50';
-
         tempCtx.fillText('From:', x, y);
         const senderText = postcardData.senderMode === 'anonymous'
             ? 'A Friend ✨'

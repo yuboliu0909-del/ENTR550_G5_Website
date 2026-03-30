@@ -1,178 +1,122 @@
 <!--
   Postcard.html — Landing Page
   Entry point for the Virtual Postcard Platform.
-
   Sections (shown/hidden via showSection()):
-    - Home:       hero banner + feature cards
-    - Categories: 10 occasion cards; clicking one navigates to postcard-editor.html
-    - About:      project description
-
+    - Home: hero banner + feature cards
+    - About: project description
   Also handles the ?loc=<qr_code_id> URL parameter from physical QR codes:
-  stores the location in sessionStorage so the editor can auto-fill it.
+    stores the location in sessionStorage so the editor can auto-fill it.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Postcard Platform - Send Love from Campus</title>
-    <meta name="description" content="Create and send beautiful postcards to friends, family, and loved ones. Color, customize, and share meaningful connections.">
-    <link rel="stylesheet" href="postcard.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Postcard Platform - Send Love from Campus</title>
+  <meta name="description" content="Create and send beautiful postcards to friends, family, and loved ones. Color, customize, and share meaningful connections.">
+  <link rel="stylesheet" href="postcard.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="logo">
-                📮 PostCard
-            </div>
-            <nav>
-                <button onclick="showSection('home')">Home</button>
-                <button onclick="showSection('about')">About</button>
-            </nav>
-        </header>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">📮 PostCard</div>
+      <nav>
+        <button onclick="showSection('home')">Home</button>
+        <button onclick="showSection('about')">About</button>
+      </nav>
+    </header>
 
-        <!-- Home Section -->
-        <div id="home" class="section active">
-
-            <div class="hero">
-
-            <!-- Decorative background postcards -->
-            <div class="bg-postcards" aria-hidden="true">
-                <img src="postcard_draft/engineered-in-ann-arbor.png"  class="bg-pc bp1">
-                <img src="postcard_draft/greetings-burton-tower.png"   class="bg-pc bp2">
-                <img src="postcard_draft/greetings-michigan-union.png" class="bg-pc bp3">
-                <img src="postcard_draft/greetings-large-letter.png"   class="bg-pc bp4">
-                <img src="postcard_draft/cozy-cat-library.png"         class="bg-pc bp5">
-                <img src="postcard_draft/snail-mail-co.png"            class="bg-pc bp6">
-            </div>
-                <h1>
-                    Send Love,<br>
-                    <span class="highlight">One Postcard</span><br>
-                    at a Time
-                </h1>
-                <p style="max-width: 420px; margin: 0 auto 1.5rem;">Choose a template or start from scratch, personalize your message, and share it via link — stamped from your spot on campus</p>
-                <button class="cta-button" onclick="showSection('categories')">Create a Postcard 🎨</button>
-            </div>
+    <!-- Home Section -->
+    <div id="home" class="section active">
+      <div class="hero">
+        <!-- Decorative background postcards -->
+        <div class="bg-postcards" aria-hidden="true">
+          <img src="postcard_draft/engineered-in-ann-arbor.png" class="bg-pc bp1">
+          <img src="postcard_draft/greetings-burton-tower.png" class="bg-pc bp2">
+          <img src="postcard_draft/greetings-michigan-union.png" class="bg-pc bp3">
+          <img src="postcard_draft/greetings-large-letter.png" class="bg-pc bp4">
+          <img src="postcard_draft/cozy-cat-library.png" class="bg-pc bp5">
+          <img src="postcard_draft/snail-mail-co.png" class="bg-pc bp6">
         </div>
 
-        <!-- Categories Section -->
-        <div id="categories" class="section">
-            <h2 style="text-align: center; margin-bottom: 40px; font-size: 2.5rem;">Choose a Situation</h2>
-            <p style="text-align: center; margin-bottom: 40px; font-size: 1.2rem; opacity: 0.8;">
-                What's the occasion? Pick a category to get started.
-            </p>
-            <div class="card-grid">
-                <div class="card" onclick="startEditor('umich-pride', '〽️')">
-                    <div class="card-emoji">〽️</div>
-                    <h3>UMich Pride</h3>
-                </div>
-                <div class="card" onclick="startEditor('miss-you', '💭')">
-                    <div class="card-emoji">💭</div>
-                    <h3>Miss You</h3>
-                </div>
-                <div class="card" onclick="startEditor('love', '❤️')">
-                    <div class="card-emoji">❤️</div>
-                    <h3>Love</h3>
-                </div>
-                <div class="card" onclick="startEditor('game-day', '🏈')">
-                    <div class="card-emoji">🏈</div>
-                    <h3>Game Day</h3>
-                </div>
-                <div class="card" onclick="startEditor('graduation', '🎓')">
-                    <div class="card-emoji">🎓</div>
-                    <h3>Graduation</h3>
-                </div>
-                <div class="card" onclick="startEditor('welcome-wolverine', '🐺')">
-                    <div class="card-emoji">🐺</div>
-                    <h3>Welcome Wolverine</h3>
-                </div>
-                <div class="card" onclick="startEditor('thank-you', '🙏')">
-                    <div class="card-emoji">🙏</div>
-                    <h3>Thank You</h3>
-                </div>
-                <div class="card" onclick="startEditor('congrats', '🎉')">
-                    <div class="card-emoji">🎉</div>
-                    <h3>Congrats</h3>
-                </div>
-                <div class="card" onclick="startEditor('encouragement', '💪')">
-                    <div class="card-emoji">💪</div>
-                    <h3>Encouragement</h3>
-                </div>
-                <div class="card" onclick="startEditor('birthday', '🎂')">
-                    <div class="card-emoji">🎂</div>
-                    <h3>Birthday</h3>
-                </div>
-                <div class="card" onclick="startEditor('checking-in', '👋')">
-                    <div class="card-emoji">👋</div>
-                    <h3>Checking In</h3>
-                </div>
-                <div class="card" onclick="startEditor('apology', '🤝')">
-                    <div class="card-emoji">🤝</div>
-                    <h3>Apology</h3>
-                </div>
-            </div>
-        </div>
+        <h1>
+          Postcard<br>
+          <span class="highlight">with Love</span>
+        </h1>
 
-        <!-- About Section -->
-        <div id="about" class="section">
-            <div class="editor">
-                <h2 style="text-align: center;">About This Project</h2>
-                <div style="max-width: 800px; margin: 0 auto;">
-                    <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 20px;">
-                        In a world of quick texts and fleeting social media posts, we wanted to create something more intentional.
-                        Something that takes a moment to create and feels special to receive.
-                    </p>
-                    <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 20px;">
-                        Virtual Postcard Platform was born from a simple idea: what if we could combine the thoughtfulness of a
-                        handwritten postcard with the creativity of a coloring book and the convenience of digital sharing?
-                    </p>
-                    <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 30px;">
-                        Whether you're thanking a friend, encouraging a classmate, or just letting someone know you're thinking
-                        of them, postcards create a pause in our busy lives to connect meaningfully.
-                    </p>
-                    <div style="text-align: center;">
-                        <button class="cta-button" onclick="showSection('home')">Start Creating</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <button class="cta-button" onclick="window.location.href='postcard-editor.html'">Start Here</button>
+      </div>
 
-        <footer>
-            <p>Made with ❤️ for meaningful connections</p>
-            <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
-        </footer>
+      <!-- Info Cards (non-clickable) -->
+      <div class="card-grid" style="max-width: 900px; margin: 0 auto 40px;">
+        <div class="card feature-card">
+          <div class="card-emoji">🎨</div>
+          <h3>Customize</h3>
+          <p>Pick a template or start from scratch. Draw, add text, stickers, and make it yours</p>
+        </div>
+        <div class="card feature-card">
+          <div class="card-emoji">✍️</div>
+          <h3>Personalize</h3>
+          <p>Write a heartfelt message on the back. Choose your font and style</p>
+        </div>
+        <div class="card feature-card">
+          <div class="card-emoji">🚀</div>
+          <h3>Share</h3>
+          <p>Send your postcard via link or email — stamped from your spot on campus</p>
+        </div>
+      </div>
     </div>
 
-    <script>
-        function showSection(sectionId) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById(sectionId).classList.add('active');
-            window.scrollTo(0, 0);
-        }
+    <!-- About Section -->
+    <div id="about" class="section">
+      <div class="editor">
+        <h2 style="text-align: center;">About This Project</h2>
+        <div style="max-width: 800px; margin: 0 auto;">
+          <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 20px;">
+            In a world of quick texts and fleeting social media posts, we wanted to create something more intentional.
+            Something that takes a moment to create and feels special to receive.
+          </p>
+          <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 20px;">
+            Virtual Postcard Platform was born from a simple idea: what if we could combine the thoughtfulness of a
+            handwritten postcard with the creativity of a coloring book and the convenience of digital sharing?
+          </p>
+          <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 30px;">
+            Whether you're thanking a friend, encouraging a classmate, or just letting someone know you're thinking
+            of them, postcards create a pause in our busy lives to connect meaningfully.
+          </p>
+          <div style="text-align: center;">
+            <button class="cta-button" onclick="window.location.href='postcard-editor.html'">Start Here</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        function startEditor(category, emoji) {
-            // Carry over any QR-code location stored from URL param
-            const loc = sessionStorage.getItem('qrLocation') || '';
-            sessionStorage.removeItem('qrLocation');
+    <footer>
+      <p>Made with ❤️ for meaningful connections</p>
+      <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
+    </footer>
+  </div>
 
-            let url = `postcard-editor.html?category=${encodeURIComponent(category)}&emoji=${encodeURIComponent(emoji)}`;
-            if (loc) url += `&loc=${encodeURIComponent(loc)}`;
-            window.location.href = url;
-        }
+  <script>
+    function showSection(sectionId) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
+      window.scrollTo(0, 0);
+    }
 
-        window.onload = function() {
-            const params = new URLSearchParams(window.location.search);
-            const loc = params.get('loc');
-            if (loc) {
-                // QR code scan: remember location, show categories
-                sessionStorage.setItem('qrLocation', loc);
-                showSection('categories');
-            }
-            if (window.location.hash === '#about') {
-                showSection('about');
-            }
-        };
-    </script>
+    window.onload = function() {
+      const params = new URLSearchParams(window.location.search);
+      const loc = params.get('loc');
+      if (loc) {
+        // QR code scan: remember location, go straight to editor
+        sessionStorage.setItem('qrLocation', loc);
+        window.location.href = 'postcard-editor.html';
+      }
+      if (window.location.hash === '#about') {
+        showSection('about');
+      }
+    };
+  </script>
 </body>
 </html>

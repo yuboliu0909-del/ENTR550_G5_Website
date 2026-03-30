@@ -2,73 +2,68 @@
   postcard-view.html — Received Postcard Page
   This is the page recipients open when they click a shared postcard link.
   URL param: ?view=<postcard_id>
-
   Displays the postcard in two halves:
     Front — the colored canvas drawing
     Back  — the handwritten message, sender name, and campus location
-
   Offers a "Download JPG" button that exports a full 1200×800 composite image.
   All interactivity is handled by postcard-view.js.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>You've Got Mail! - Virtual Postcard Platform</title>
-    <link rel="stylesheet" href="postcard.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You've Got Mail! - Virtual Postcard Platform</title>
+  <link rel="stylesheet" href="postcard.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="logo">
-                📮 PostCard
-            </div>
-            <nav>
-                <button onclick="window.location.href='Postcard.html'">Home</button>
-                <button onclick="window.location.href='Postcard.html#about'">About</button>
-            </nav>
-        </header>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">📮 PostCard</div>
+      <nav>
+        <button onclick="window.location.href='Postcard.html'">Home</button>
+        <button onclick="window.location.href='Postcard.html#about'">About</button>
+      </nav>
+    </header>
 
-        <!-- View Section (always active on this page) -->
-        <div id="view" class="section active">
-            <div style="text-align: center; margin-bottom: 40px;">
-                <h2 style="font-size: 3rem; margin-bottom: 20px;">You've Got Mail! 💌</h2>
+    <!-- View Section -->
+    <div id="view" class="section active">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h2 style="font-size: 3rem; margin-bottom: 20px;">You've Got Mail! 💌</h2>
+      </div>
+      <div class="postcard-preview">
+        <div class="postcard-sides">
+          <div>
+            <h3 style="text-align: center; margin-bottom: 15px;">Front</h3>
+            <div class="postcard-side postcard-front" id="viewFront">
+              <!-- Canvas inserted by JS -->
             </div>
-            <div class="postcard-preview">
-                <div class="postcard-sides">
-                    <div>
-                        <h3 style="text-align: center; margin-bottom: 15px;">Front</h3>
-                        <div class="postcard-side postcard-front" id="viewFront">
-                            <!-- Canvas inserted by JS -->
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style="text-align: center; margin-bottom: 15px;">Back</h3>
-                        <div class="postcard-side postcard-back">
-                            <div id="viewMessage" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 30px;"></div>
-                            <div style="padding-top: 20px; border-top: 2px dashed rgba(0,0,0,0.2);">
-                                <div id="viewSender" style="margin-bottom: 10px; font-size: 1.1rem;"><strong>From:</strong> <span></span></div>
-                                <div id="viewLocation" style="opacity: 0.7;"><strong>Sent from:</strong> <span></span></div>
-                            </div>
-                            <div class="stamp">💌</div>
-                        </div>
-                    </div>
-                </div>
+          </div>
+          <div>
+            <h3 style="text-align: center; margin-bottom: 15px;">Back</h3>
+            <div class="postcard-side postcard-back">
+              <div id="viewMessage" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 30px;"></div>
+              <div style="padding-top: 20px; border-top: 2px dashed rgba(0,0,0,0.2);">
+                <div id="viewSender" style="margin-bottom: 10px; font-size: 1.1rem;"><strong>From:</strong> <span></span></div>
+                <div id="viewLocation" style="opacity: 0.7;"><strong>Sent from:</strong> <span></span></div>
+              </div>
+              <div class="stamp">💌</div>
             </div>
-            <div style="text-align: center; margin-top: 40px;">
-                <button class="cta-button" onclick="downloadViewedPostcard()" style="margin-right: 10px;">📥 Download JPG</button>
-                <button class="cta-button" onclick="window.location.href='Postcard.html'">Send One Back</button>
-            </div>
+          </div>
         </div>
-
-        <footer>
-            <p>Made with ❤️ for meaningful connections</p>
-            <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
-        </footer>
+      </div>
+      <div style="text-align: center; margin-top: 40px;">
+        <button class="cta-button" onclick="downloadViewedPostcard()" style="margin-right: 10px;">📥 Download JPG</button>
+        <button class="cta-button" onclick="window.location.href='Postcard.html'">Send One Back</button>
+      </div>
     </div>
 
-    <script src="postcard-view.js"></script>
+    <footer>
+      <p>Made with ❤️ for meaningful connections</p>
+      <p style="margin-top: 10px;">University of Michigan • Ann Arbor</p>
+    </footer>
+  </div>
+  <script src="postcard-view.js"></script>
 </body>
 </html>
